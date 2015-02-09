@@ -19,7 +19,7 @@ function dStructAutoload($classname) { if ('ds' == substr($classname, 0, 2)) { i
 
 spl_autoload_register('dStructAutoload');
 
-require_once 'dconnection.php';
+require_once 'dStruct/dconnection.php';
 
 /** Constant used to construct URL queries. */
 
