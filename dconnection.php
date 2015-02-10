@@ -1,16 +1,17 @@
 <?php
 /**
-	Defines the dConnection class that manages the connection to the database.
-
-	@copyright 2009-2015 Mike Weaver
-
-	@license http://www.opensource.org/licenses/mit-license.html  MIT License
-
-	@author Mike Weaver
-	@created 2009-03-17
-	@revised 2015-02-09
-
-	@version 1.1
+* Defines the dConnection class that manages the connection to the database.
+*
+* @copyright 2009-2015 Mike Weaver
+*
+* @license http://www.opensource.org/licenses/mit-license.html
+*
+* @author Mike Weaver
+* @created 2009-03-17
+* @revised 2015-02-09
+*
+* @version 1.1
+*
 */
 
 // -----------------------------

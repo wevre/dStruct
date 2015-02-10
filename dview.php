@@ -1,15 +1,16 @@
 <?php
 /**
-	Generates an HTML page for viewing dStruct objects.
-
-	@copyright 2014-2015 Mike Weaver
-
-	@license http://www.opensource.org/licenses/mit-license.html  MIT License
-
-	@author Mike Weaver
-	@created 2014-02-12
-
-	@version 1.1
+* Generates an HTML page for viewing dStruct objects.
+*
+* @copyright 2014-2015 Mike Weaver
+*
+* @license http://www.opensource.org/licenses/mit-license.html
+*
+* @author Mike Weaver
+* @created 2014-02-12
+*
+* @version 1.1
+*
 */
 
 function fetchDomains($mysqli) {

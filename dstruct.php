@@ -1,16 +1,17 @@
 <?php
 /**
 * Defines the dStruct class that represents an object stored in a database.
-
+*
 * @copyright 2009-2015 Mike Weaver
-
-* @license http://www.opensource.org/licenses/mit-license.html  MIT License
-
+*
+* @license http://www.opensource.org/licenses/mit-license.html
+*
 * @author Mike Weaver
 * @created 2009-03-17
 * @revised 2015-01-20
-
+*
 * @version 1.1
+*
 */
 
 /** Autoloader for dObjects (subclasses of dStruct). */
