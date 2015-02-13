@@ -20,7 +20,7 @@ function dStructAutoload($classname) { if ('ds' == substr($classname, 0, 2)) { i
 
 spl_autoload_register('dStructAutoload');
 
-require_once 'dStruct/dconnection.php';
+require_once 'dStruct/dConnection.php';
 
 /** Constant used to construct URL queries. */
 
@@ -154,7 +154,7 @@ class dStruct {
 		$origValue = $this->origValues[$fname];
 		// check for zombies
 		if (!is_null($this->values[$fname]) && $this->fnameIsRef($fname) && $this->ownsRef($fname)) { // test here is: are we about to blow away an owned ref and leave it stranded as a zombie in the database?
-			if ($this->cnxn->inZombieMode()) { zombie_error_log("dstruct::__set: pushing zombies for {$this}->{$fname}"); foreach ((array)$this->structsFromRefArray($fname) as $struct) { $this->cnxn->pushZombie($struct); } }
+			if ($this->cnxn->inZombieMode()) { zombie_error_log("dStruct::__set: pushing zombies for {$this}->{$fname}"); foreach ((array)$this->structsFromRefArray($fname) as $struct) { $this->cnxn->pushZombie($struct); } }
 			else if ($this->cnxn->shouldWarnZombie()) { throw new Exception("ZOMBIE fatal: {$this}->{$fname} being set to " . ( $value ? $value : 'null' ) . " is an owned reference to {$this->gnameForRefField($fname)}."); }
 		}
 		// determine what action to take based on old and new value

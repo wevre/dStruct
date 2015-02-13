@@ -84,7 +84,7 @@ function getStructValues($struct) {
 }
 
 // -----------------------------
-//! display dstruct objects from the database
+//! display dStruct objects from the database
 
 //NOTE: this script expects the caller to set up four important global variables: $link_pre which will precede all URL's, $cnxn which will be a dConnection, $mysqli a connection to the database, and $base_name which will be the starting path of all URL's (after the $link_pre)
 //NOTE: based on the above, links will all be {$link_pre}/{$base_name}/{$domain}/{$gname}/{$idee}
