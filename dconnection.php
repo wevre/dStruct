@@ -228,7 +228,7 @@ class dConnection {
 			}
 			if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 		}
-		if (!$values) { cnxn_error_log('no values fetched for ' . $gname . '(' . $idee . ')'); return null; }
+		if (!$values) { cnxn_error_log('no values fetched for ' . $gname . '(' . $idee . ')'); if (!$idee) { throw new Exception("Fetch Error: no values fetched for {$gname} and idee is null: `{$idee}`"); } return null; }
 		$result = new $gname($this, $idee, $values);
 		if ($key) { $result->key = $key; } // set the key without triggering a register
 		else if ($result->shouldFetchKey()) { $result->fetchKey(); }
