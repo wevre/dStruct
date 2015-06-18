@@ -16,9 +16,7 @@
 
 /** Autoloader for dObjects (subclasses of dStruct). */
 
-function dStructAutoload($classname) { if ('ds' == substr($classname, 0, 2)) { include $classname . '.php'; } }
-
-spl_autoload_register('dStructAutoload');
+spl_autoload_register(function ($class) { if ('ds' == substr($class, 0, 2)) { include $class . '.php'; } } );
 
 require_once 'dStruct/dConnection.php';
 
