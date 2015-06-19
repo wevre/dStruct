@@ -14,24 +14,30 @@
 *
 */
 
-/** Autoloader for dObjects (subclasses of dStruct). */
+//
+// !Autoloader for dObjects (subclasses of dStruct).
+//
 
 spl_autoload_register(function ($class) { if ('ds' == substr($class, 0, 2)) { include $class . '.php'; } } );
 
 require_once 'dStruct/dConnection.php';
 
-/** Constant used to construct URL queries. */
+//
+// !Constant used to construct URL queries.
+//
 
 define('KEY_IDEE', 'i');
 
-//**  Represents an object stored in the database. */
+//
+// !Represents an object stored in the database.
+//
 
 class dStruct {
 
 	public $cnxn;
 	public $idee;
 	public $key;
-	// pools of fields that need to be modified at next commit
+	// Pools of fields that need to be modified at next commit.
 	protected $values;
 	protected $origValues;
 	protected $insertQueue;
@@ -41,20 +47,20 @@ class dStruct {
 	static function createNew($cnxn, $values=array()) {
 		$cnxn->confirmTransaction('createNew');
 		$gname = get_called_class();
-		//cnxn_error_log('creating new object of type ' . $gname);
-		if (!($item = $cnxn->popZombie($gname))) { $item = new $gname($cnxn, null, null); } // if we have a zombie, use it, otherwise create new
-		foreach ($values as $fname=>$value) { $item->__set($fname, $value); } // setting the values here marks them all for insertion
-		$cnxn->confirmStruct($item); // confirm the struct -- make sure the database knows about gnames and fnames and we have an idee
+		/*cnxn_error_log('creating new object of type ' . $gname);*/
+		if (!($item = $cnxn->popZombie($gname))) { $item = new $gname($cnxn, null, null); } // If we have a zombie, use it, otherwise create new.
+		foreach ($values as $fname=>$value) { $item->__set($fname, $value); } // Setting the values here marks them all for insertion.
+		$cnxn->confirmStruct($item); // Confirm the struct -- make sure the database knows about gnames and fnames and we have an idee.
 		return $item;
 	}
 
-	function __construct($cnxn, $idee, $values) { // this constructor creates a dStruct object from values read in from the database; no fields are marked for edits
+	function __construct($cnxn, $idee, $values) { // Create a dStruct object from values read in from the database. No fields are marked for edits.
 		$this->cnxn = $cnxn;
 		$this->idee = $idee;
 		$this->values = $values;
 	}
 
-	function copyStruct() { // does a deep copy, specifically it makes new copies of any fields that are owned refs so that we don't end up with two objects each claiming ownership of the same owned ref
+	function copyStruct() { // Perform a deep copy. Make new copies of any fields that are owned refs so that we don't end up with two objects each claiming ownership of the same owned ref.
 		$this->cnxn->confirmTransaction('copyStruct');
 		$gname = get_class($this);
 		$values_array = array();
@@ -66,7 +72,7 @@ class dStruct {
 			$values_array[$fname] = $value;
 		}
 		$item = $gname::createNew($this->cnxn, $values_array);
-		//cnxn_error_log("copied $this into $item");
+		/*cnxn_error_log("copied $this into $item");*/
 		return $item;
 	}
 
@@ -74,52 +80,60 @@ class dStruct {
 
 	function __toString() { return get_class($this) . '(' . $this->idee . ')'; }
 
-	// -----------------------------
-	//! Field Definitions -- for subclasses to override
+	//
+	// !Field Definitions -- For subclasses to override.
+	//
 
 	function dStructFieldDefs() {
-		// returns the fields defined by this object, as key value pairs, such as fname=>value, with field name (the key) mapped to the field type (the value); note that field type is equivalent to the mysql table that stores the field
-		// subclasses should override this method to provide their distinct fields
-		// note the implementation as an instance method, and not as a static method -- this means we can only query field defs on existing objects, and not on the class; that should be okay, because for existing data, the known code and category definitions are already captured in the def_ tables; even if a new field had popped up in the class definition, no data for that field would yet exist in the database
-		// note also that we have not provided any mechanism for class inheritance, but subclass heirarchies are free to do so
+		// Return the fields defined by this object, mapping each fname to the field type (where field type matches the database table used to store the field).
+		// Example: return [ 'name'=>dCONCAT, 'address'=>dCONCAT, 'verified'=>dBOOL, ];
+		// Subclasses should override this method to provide their distinct fields.
+		// Note the implementation as an instance method, and not as a static method -- this means we can only query field defs on existing objects, and not on the class. That should be okay, because for existing data, the known code and category definitions are already captured in the def_ tables. Even if a new field had popped up in the class definition, no data for that field would yet exist in the database.
+		// Note also that we have not provided any mechanism for class inheritance, but subclass heirarchies are free to do so. They just have to merge their parent class field defs with their own and return that merged result.
 		return array();
 	}
 
 	function ownsRef($fname) {
-		// returns true if the called object "owns" the referenced object. Owned objects will be deleted along with the object
-		// subclasses need to return true or false if the passed in fname is one of their fields, otherwise call super which will throw this exception
+		// Return true if the called object "owns" the referenced object. Owned objects will be deleted along with the object.
+		// Subclasses need to return true or false if `fname` is one of their fields, otherwise call super which will throw this exception.
 		throw new Exception('Invalid fname ' . $fname . ' called for ownsRef');
 	}
 
 	function gnameForRefField($fname) {
-		// returns the gname of the object pointed at in this object's ref field
-		// subclasses need to return a proper fname for recognized fields, and call super otherwise, which will throw an exception
+		// Return the gname of the object pointed at in this object's ref field.
+		// Subclasses need to return a proper fname for recognized fields, and call super otherwise, which will throw an exception.
 		throw new Exception('Invalid fname ' . $fname . ' called for gnameForRefField');
 	}
 
 	function gnameForKeyField($fname) {
-		// returns the gname of the object pointed at in this object's key field
-		// subclasses need to return a proper fname for recognized fields, and call super otherwise, which will throw an exception
+		// Return the gname of the object pointed at in this object's key field.
+		// Subclasses need to return a proper fname for recognized fields, and call super otherwise, which will throw an exception.
 		throw new Exception('Invalid fname ' . $fname . ' called for gnameForKeyField');
 	}
+
+	//
+	// !Methods used to construct ULR parameters related to an object.
+	//
 
 	function getIdeeLink() { return KEY_IDEE . '=' . $this->idee; }
 
 	function getFragment() { return substr_replace(get_class($this), '', 0, 2) . '_' . $this->idee; }
 
-	// -----------------------------
-	//! Methods for determining field type of a given fname
+	//
+	// !Methods for determining field type of a given fname.
+	//
 
 	function fnameIsRef($fname) { $fields = $this->dStructFieldDefs(); return (dREF == $fields[$fname]); }
 
 	function fnameIsConcat($fname) { $fields = $this->dStructFieldDefs(); return (dCONCAT == $fields[$fname]); }
 
-	// -----------------------------
-	//! Getting and setting the key for an object
+	//
+	// !Getting and setting the key for an object.
+	//
 
 	function fetchKey() { if (!$this->key && ($key = $this->cnxn->fetchKeyForStruct($this))) { $this->key = $key; } }
 
-	function shouldFetchKey() { return false; } // subclasses can override to indicate the connection should look for a key when the struct is fetched
+	function shouldFetchKey() { return false; } // Subclasses can override to indicate the connection should look for a key when the struct is fetched.
 
 	function setKey($key) {
 		$this->cnxn->confirmTransaction('setKey');
@@ -137,8 +151,9 @@ class dStruct {
 
 	function getKey() { return $this->key; }
 
-	// -----------------------------
-	//! Accessors
+	//
+	// !Accessors
+	//
 
 	function __get($fname) {
 		if (!array_key_exists($fname, $this->values)) { return null; }
@@ -147,15 +162,15 @@ class dStruct {
 
 	function __set($fname, $value) {
 		$this->cnxn->confirmTransaction('__set');
-		// determine the original value (since last commit)
+		// Determine the original value (since last commit).
 		if (!array_key_exists($fname, (array)$this->origValues)) { $this->origValues[$fname] = $this->values[$fname]; }
 		$origValue = $this->origValues[$fname];
-		// check for zombies
-		if (!is_null($this->values[$fname]) && $this->fnameIsRef($fname) && $this->ownsRef($fname)) { // test here is: are we about to blow away an owned ref and leave it stranded as a zombie in the database?
+		// Check for zombies.
+		if (!is_null($this->values[$fname]) && $this->fnameIsRef($fname) && $this->ownsRef($fname)) { // Test here is: are we about to blow away an owned ref and leave it stranded as a zombie in the database?.
 			if ($this->cnxn->inZombieMode()) { zombie_error_log("dStruct::__set: pushing zombies for {$this}->{$fname}"); foreach ((array)$this->structsFromRefArray($fname) as $struct) { $this->cnxn->pushZombie($struct); } }
 			else if ($this->cnxn->shouldWarnZombie()) { throw new Exception("ZOMBIE fatal: {$this}->{$fname} being set to " . ( $value ? $value : 'null' ) . " is an owned reference to {$this->gnameForRefField($fname)}."); }
 		}
-		// determine what action to take based on old and new value
+		// Determine what action to take based on old and new value.
 		unset($this->insertQueue[$fname]);
 		unset($this->updateQueue[$fname]);
 		unset($this->deleteQueue[$fname]);
@@ -163,43 +178,46 @@ class dStruct {
 		else if (!is_null($origValue) && is_null($value)) { $this->deleteQueue[$fname] = true; $msg = 'DELETE'; }
 		else if ($origValue != $value) { $this->updateQueue[$fname] = true; $msg = 'UPDATE'; }
 		else { $msg = 'NO CHANGE'; }
-		// queue this struct up for autocommit
+		// Queue this struct up for autocommit.
 		$this->cnxn->queueForCommit($this);
-		// set the value
+		// Set the value.
 		$this->values[$fname] = $value;
-		//cnxn_error_log("{$this}->$fname <= [" . ( is_null($value) ? 'NULL' : $value ) . '] was [' . ( is_null($origValue) ? 'NULL' : $origValue ) . '] :: ' . $msg);
+		/*cnxn_error_log("{$this}->$fname <= [" . ( is_null($value) ? 'NULL' : $value ) . '] was [' . ( is_null($origValue) ? 'NULL' : $origValue ) . '] :: ' . $msg);*/
 	}
 
 	function __isset($fname) { return array_key_exists($fname, $this->values); }
 
 	function getValues() { return $this->values; }
 
-	function rollback() { foreach ((array)$this->origValues as $fname=>$value) { $this->values[$fname] = $value; } } // restore fields to their original values in case of a database ROLLBACK
+	function rollback() { foreach ((array)$this->origValues as $fname=>$value) { $this->values[$fname] = $value; } } // Restore fields to their original values in case of a database ROLLBACK.
 
-	// -----------------------------
-	//! Committing queued transactions
+	//
+	// !Commit queued transactions.
+	//
 
 	function commitStruct() {
 		$this->cnxn->confirmTransaction('commitStruct');
-		$this->cnxn->confirmStruct($this); // confirms we have category, codes, and idee assigned
-		//cnxn_error_log("committing $this");
+		$this->cnxn->confirmStruct($this); // Confirm we have category, codes, and idee assigned.
+		/*cnxn_error_log("committing $this");*/
 		foreach ((array)$this->insertQueue as $fname=>$test) { if ($test) { $this->cnxn->insertField($this, $fname, $this->values[$fname]); } }
 		foreach ((array)$this->updateQueue as $fname=>$test) { if ($test) { $this->cnxn->updateField($this, $fname, $this->values[$fname]); } }
 		foreach ((array)$this->deleteQueue as $fname=>$test) { if ($test) { $this->cnxn->deleteField($this, $fname); } }
-		// clear out the queues and original values //NOTE: we don't use unset() here on object properties, or they behave strangely afterward
+		// Clear out the queues and original values. Note: We don't use unset() here on object properties, or they behave strangely afterward.
 		$this->insertQueue = null;
 		$this->deleteQueue = null;
 		$this->updateQueue = null;
 		$this->origValues = null;
 	}
 
-	// -----------------------------
-	//! Returning a struct stored as a ref
+	//
+	// !Return a struct stored as a ref.
+	//
 
 	function structFromRefField($fname) { return $this->cnxn->fetchStructForIdee($this->gnameForRefField($fname), $this->values[$fname]); }
 
-	// -----------------------------
-	//! Returning structs stored in a ref array
+	//
+	// !Return array of structs stored in a ref array.
+	//
 
 	function structsFromRefArray($fname) {
 		$gname = $this->gnameForRefField($fname);
@@ -207,13 +225,15 @@ class dStruct {
 		return array_map(function($idee) use($cnxn, $gname) { return $cnxn->fetchStructForIdee($gname, $idee); }, (array)$this->values[$fname]);
 	}
 
-	// -----------------------------
-	//! Returning a struct stored as a key
+	//
+	// !Return a struct stored as a key.
+	//
 
 	function structFromKeyField($fname) { return $this->cnxn->fetchStructForKey($this->gnameForKeyField($fname), $this->values[$fname]); }
 
-	// -----------------------------
-	//! Returning structs stored in a key array
+	//
+	// !Return array of structs stored in a key array.
+	//
 
 	function structsFromKeyArray($fname) {
 		$gname = $this->gnameForRefField($fname);
@@ -221,13 +241,14 @@ class dStruct {
 		return array_map(function($key) use($cnxn, $gname) { return $cnxn->fetchStructForKey($gname, $key); }, (array)$this->values[$fname]);
 	}
 
-	// -----------------------------
-	//! Delete this struct and any structs it references and owns, also unregisters a key
+	//
+	// !Delete struct and any structs it references and owns, also unregister any key.
+	//
 
-	function deleteStruct() { //NOTE: deleting removes the struct from the database, but the fields and idee are still available within the object
+	function deleteStruct() { //NOTE: Deleting removes the struct from the database, but the fields and idee are still available within the object.
 		$this->cnxn->confirmTransaction('deleteStruct');
-		$this->fetchKey(); // make sure we know about the struct's key (if any) before deleting
-		$this->setKey(null); // causes an unregister if key c’è
+		$this->fetchKey(); // Make sure we know about the struct's key (if any) before deleting.
+		$this->setKey(null); // Cause an unregister if key exists.
 		foreach ($this->values as $fname=>$value) {
 			if ($this->fnameIsRef($fname) && $this->ownsRef($fname)) {
 				foreach ((array)$value as $idee) {
@@ -238,8 +259,9 @@ class dStruct {
 		$this->cnxn->deleteStructWithIdee(get_class($this), $this->idee);
 	}
 
-	// -----------------------------
-	//! Handle adding and removing single elements to/from owned ref arrays
+	//
+	// !Handle adding and removing single elements to/from owned ref arrays.
+	//
 
 	function addToRefArray($fname, $children, $sort_callback=null) {
 		if ($this->cnxn->inZombieMode()) { throw new Exception('Error addToRefArray while in zombie mode'); }
@@ -253,7 +275,7 @@ class dStruct {
 		$this->cnxn->resumeZombieWarnings();
 	}
 
-	function removeFromRefArray($fname, $children) { // deletes struct and removes from parent's array
+	function removeFromRefArray($fname, $children) { // Delete struct and remove from parent's array.
 		if ($this->cnxn->inZombieMode()) { throw new Exception('Error removeFromRefArray while in zombie mode'); }
 		if (!is_array($children)) { throw new Exception('removeFromRefArray children must be an array'); }
 		$this->cnxn->confirmTransaction('removeFromRefArray');

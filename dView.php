@@ -39,7 +39,7 @@ function fetchCodesForCategory($mysqli, $category) {
 }
 
 function fetchStructsForCategory($mysqli, $domain, $category) {
-	// fetch the idees from meta_idees
+	// Fetch the idees from meta_idees.
 	if (!($stmt = $mysqli->prepare('SELECT idee FROM meta_idees WHERE domain = ? AND category = ? ORDER BY idee FOR UPDATE'))) { throw new Exception("Statement Error: {$stmt->error}", $stmt->errno); }
 	if (!$stmt->bind_param('ii', $domain, $category)) { throw new Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
 	if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
@@ -47,7 +47,7 @@ function fetchStructsForCategory($mysqli, $domain, $category) {
 	while ($stmt->fetch()) { $data[$idee] = array('idee'=>$idee, ); }
 	if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 	$stmt->close();
-	// then check for keys in meta_keys
+	// Then check for keys in meta_keys.
 	if (!($stmt = $mysqli->prepare('SELECT idee, `key` FROM meta_keys WHERE domain = ? AND category = ? FOR UPDATE'))) { throw new Exception("Statement Error: {$stmt->error}", $stmt->errno); }
 	if (!$stmt->bind_param('ii', $domain, $category)) { throw new Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
 	if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
@@ -83,17 +83,22 @@ function getStructValues($struct) {
 	return $data;
 }
 
-// -----------------------------
-//! display dStruct objects from the database
+//
+// !Display dStruct objects from the database.
+//
 
-//NOTE: this script expects the caller to set up four important global variables: $link_pre which will precede all URL's, $cnxn which will be a dConnection, $mysqli a connection to the database, and $base_name which will be the starting path of all URL's (after the $link_pre)
-//NOTE: based on the above, links will all be {$link_pre}/{$base_name}/{$domain}/{$gname}/{$idee}
+//NOTE: This script expects the caller to set up four important global variables:
+//    $link_pre, which will precede all URL's;
+//    $cnxn, which will be a dConnection;
+//    $mysqli, a connection to the database; and,
+//    $base_name, which will be the starting path of all URL's (after the $link_pre).
+// Based on the above, links will all be {$link_pre}/{$base_name}/{$domain}/{$gname}/{$idee}.
 
 $path = getURLPath();
 list($domain, $gname, $idee) = array_slice(explode('/', substr($path, strpos($path, $base_name))), 1);
 
 do try {
-	if ($idee) { // show the struct
+	if ($idee) { // Show the struct.
 		if ($domain != $cnxn->getDomain()) { $cnxn = new dConnection($mysqli, $domain); }
 		if (!($struct = $cnxn->fetchStructForIdee($gname, $idee))) { break; }
 		$guts .= '<h1>' . "{$gname}({$idee}" . ( $struct->getKey() ? "&mdash;{$struct->getKey()}" : '' ) . ')</h1><ul>';
@@ -102,7 +107,7 @@ do try {
 		}
 		$guts .= '</ul>';
 	}
-	else if ($gname) { // show a list of fnames and then a list of idees/keys
+	else if ($gname) { // Show a list of fnames and then a list of idees/keys.
 		$category = $cnxn->categoryForGname($gname);
 		$guts .= '<h1>' . $gname . '</h1>';
 		$guts .= '<h2>Codes</h2><ul>';
@@ -112,12 +117,12 @@ do try {
 		foreach (fetchStructsForCategory($mysqli, $domain, $category) as $idee=>$details) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}/{$domain}/{$gname}/{$idee}\">{$gname}({$idee}" . ( $details['key'] ? "&mdash;{$details['key']}" : '' ) . ")</a></p></li>"; }
 		$guts .= '</ul>';
 	}
-	else if ($domain) { // show a list of gnames
+	else if ($domain) { // Show a list of gnames.
 		$guts .= '<h1>Categories</h1><ul>';
 		foreach (fetchCategories($mysqli) as $category=>$gname) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}/{$domain}/{$gname}\">{$category}-{$gname}</a></p></li>"; }
 		$guts .= '</ul>';
 	}
-	else { // show a list of domains
+	else { // Show a list of domains.
 		$guts .= '<h1>Domains</h1><ul>';
 		foreach (fetchDomains($mysqli) as $domain=>$dname) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}/{$domain}\">{$domain}-{$dname}</a></p></li>"; }
 		$guts .= '</ul>';
