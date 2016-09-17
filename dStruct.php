@@ -160,6 +160,13 @@ class dStruct {
 		return $this->values[$fname];
 	}
 
+/**
+* This override allows the dStruct object to capture 'set' actions on a field and record it for later syncing with the backing store. This means a user of a dstruct object can call
+* $myStruct->someProperty = 'hello'
+* and the new value of `someProperty` will be queued up for insert into the database.
+* This works for setting scalars and arrays, but it will not work to append to arrays. In other words, one can't make this call:
+* $myStruct->otherPropArray[] = $value;
+*/
 	function __set($fname, $value) {
 		$this->cnxn->confirmTransaction('__set');
 		// Determine the original value (since last commit).

@@ -182,6 +182,8 @@ class dConnection {
 
 	function tablesForGname($gname) { return $this->tables[$gname]; }
 
+	function gnames() { return $this->gnames; }
+
 	//
 	// !Utility for setting up and binding preparing statements.
 	//
@@ -282,7 +284,7 @@ class dConnection {
 	function registerStructWithKey($struct, $key) {
 		$gname = get_class($struct);
 		$cKey = 'registerKey';
-		$stmt = $this->getStatement($cKey, 'INSERT INTO meta_keys (domain, category, `key`, idee) VALUES ( ?, ?, ?, ?)', 'iisi', array('domain'=>$this->domain, 'category'=>$this->categoryForGname($gname), 'key'=>$key, 'idee'=>$struct->idee, ));
+		$stmt = $this->getStatement($cKey, 'INSERT INTO meta_keys (domain, category, `key`, idee) VALUES ( ?, ?, ?, ? )', 'iisi', array('domain'=>$this->domain, 'category'=>$this->categoryForGname($gname), 'key'=>$key, 'idee'=>$struct->idee, ));
 		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
 		if (1 != $stmt->affected_rows) { throw new Exception('Invalid: number of affected rows after key insert was ' . $stmt->affected_rows . ' not 1'); }
 	}
@@ -346,7 +348,7 @@ class dConnection {
 		else if ($struct->fnameIsConcat($fname)) { $seq = SEQ_CONCAT; $value = str_split($value, CONCAT_LENGTH); }
 		else { $seq = SEQ_SINGLE; $value = (array)$value; }
 		foreach ($value as $item) {
-			$stmt = $this->getStatement($cKey, 'INSERT INTO tbl_' . $table . ' (domain, idee, code, seq, value) VALUES ( ?, ?, ?, ?, ?)', 'iiiis', array('domain'=>$this->domain, 'idee'=>$struct->idee, 'code'=>$code, 'seq'=>$seq, 'value'=>$item, ));
+			$stmt = $this->getStatement($cKey, 'INSERT INTO tbl_' . $table . ' (domain, idee, code, seq, value) VALUES ( ?, ?, ?, ?, ? )', 'iiiis', array('domain'=>$this->domain, 'idee'=>$struct->idee, 'code'=>$code, 'seq'=>$seq, 'value'=>$item, ));
 			if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
 			if (1 != $stmt->affected_rows) { throw new Exception('Invalid: number of affected rows after insert was ' . $stmt->affected_rows . ' not 1'); }
 			$seq++;
@@ -395,7 +397,7 @@ class dConnection {
 		$gname = get_class($struct);
 		$category = $this->categoryForGname($gname);
 		$cKey = 'insertIdee';
-		$stmt = $this->getStatement($cKey, 'INSERT INTO meta_idees (domain, category, idee) VALUES ( ?, ?, ?)', 'iii', array('domain'=>$this->domain, 'category'=>$category, 'idee'=>$struct->idee, ));
+		$stmt = $this->getStatement($cKey, 'INSERT INTO meta_idees (domain, category, idee) VALUES ( ?, ?, ? )', 'iii', array('domain'=>$this->domain, 'category'=>$category, 'idee'=>$struct->idee, ));
 		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
 		if (1 != $stmt->affected_rows) { throw new Exception('Invalid: number of affected rows after idee insert was ' . $stmt->affected_rows . ' not 1'); }
 	}
@@ -449,7 +451,7 @@ class dConnection {
 			$category = $this->getNextCategory();
 			/*cnxn_error_log('no category for gname ' . $gname . ' fetched next category: ' . $category);*/
 			$cKey = 'insertCategory';
-			$stmt = $this->getStatement($cKey, 'INSERT INTO def_category (category, gname) VALUES ( ?, ?)', 'is', array('category'=>$category, 'gname'=>$gname, ));
+			$stmt = $this->getStatement($cKey, 'INSERT INTO def_category (category, gname) VALUES ( ?, ? )', 'is', array('category'=>$category, 'gname'=>$gname, ));
 			if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
 			if (1 != $stmt->affected_rows) { throw new Exception("Invalid: number of affected rows after category insert was {$stmt->affected_rows} not 1"); }
 			// Update the internal xref tables and store the variable for use in the rest of this function.
@@ -457,12 +459,13 @@ class dConnection {
 			$this->gnames[$category] = $gname;
 		}
 		// Confirm that all the fields have a code.
-		foreach ($struct->dStructFieldDefs() as $fname=>$table) {
+		$fieldDefs = $struct->dStructFieldDefs(); //TODO: add error checking and logging here if the returned fieldDefs is not an array or is empty
+		foreach ($fieldDefs as $fname=>$table) {
 			if (!($code = $this->codeForFname($gname, $fname, true))) {
 				$code = $this->getNextCode();
 				/*cnxn_error_log('no code for fname ' . $fname . ' fetched next code: ' . $code);*/
 				$cKey = 'insertCode';
-				$stmt = $this->getStatement($cKey, 'INSERT INTO def_code (category, code, fname, `table`) VALUES ( ?, ?, ?, ?)', 'iiss', array('category'=>$category, 'code'=>$code, 'fname'=>$fname, 'table'=>$table, ));
+				$stmt = $this->getStatement($cKey, 'INSERT INTO def_code (category, code, fname, `table`) VALUES ( ?, ?, ?, ? )', 'iiss', array('category'=>$category, 'code'=>$code, 'fname'=>$fname, 'table'=>$table, ));
 				if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
 				if (1 != $stmt->affected_rows) { throw new Exception("Invalid: number of affected rows after category insert was {$stmt->affected_rows} not 1"); }
 				// Update the internal xref tables.
