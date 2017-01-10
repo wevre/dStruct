@@ -26,7 +26,7 @@ require_once 'dStruct/dConnection.php';
 // !Constant used to construct URL queries.
 //
 
-define('KEY_IDEE', 'i');
+define('KEY_IDEE', 'i'); //TODO: we can move this inside dStruct as a const, and users can, if they so choose, define it outside of dStruct with `define`. (see how we did KEY_ACTION inside of FormBuilder).
 
 //
 // !Represents an object stored in the database.
