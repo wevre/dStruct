@@ -13,6 +13,10 @@
 *
 */
 
+define('KEY_DOMAIN', 'd');
+define('KEY_GNAME', 'g');
+define('KEY_IDEE', 'i');
+
 function fetchDomains($mysqli) {
 	if (!($result = $mysqli->query('SELECT domain, dname FROM def_domain ORDER BY domain FOR UPDATE', MYSQLI_STORE_RESULT))) { throw new Exception("Execute Error: {$mysqli->error}", $mysqli->errno); }
 	while (list($domain, $dname) = $result->fetch_row()) { $data[$domain] = $dname; }
@@ -62,7 +66,7 @@ function getValueDisplay($struct, $fname, $value) {
 	global $link_pre, $base_name, $domain;
 	if ($struct->fnameIsRef($fname)) {
 		$ref_gname = $struct->gnameForRefField($fname);
-		return "<a href=\"{$link_pre}/{$base_name}/{$domain}/{$ref_gname}/{$value}\">{$ref_gname}({$value})</a>";
+		return "<a href=\"{$link_pre}/{$base_name}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$ref_gname}&" . KEY_IDEE . "={$value}\">{$ref_gname}({$value})</a>";
 	} else {
 		return htmlentities($value);
 	}
@@ -95,7 +99,9 @@ function getStructValues($struct) {
 // Based on the above, links will all be {$link_pre}/{$base_name}/{$domain}/{$gname}/{$idee}.
 
 $path = getURLPath();
-list($domain, $gname, $idee) = array_slice(explode('/', substr($path, strpos($path, $base_name))), 1);
+$domain = $_GET[KEY_DOMAIN];
+$gname = $_GET[KEY_GNAME];
+$idee = $_GET[KEY_IDEE];
 
 do try {
 	if ($idee) { // Show the struct.
@@ -114,17 +120,17 @@ do try {
 		foreach (fetchCodesForCategory($mysqli, $category) as $code=>$details) { $guts .= "<li><p>{$code}-{$details['fname']} ({$details['table']})</p></li>"; }
 		$guts .= '</ul>';
 		$guts .= '<h2>Objects</h2><ul>';
-		foreach (fetchStructsForCategory($mysqli, $domain, $category) as $idee=>$details) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}/{$domain}/{$gname}/{$idee}\">{$gname}({$idee}" . ( $details['key'] ? "&mdash;{$details['key']}" : '' ) . ")</a></p></li>"; }
+		foreach (fetchStructsForCategory($mysqli, $domain, $category) as $idee=>$details) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$gname}&" . KEY_IDEE . "={$idee}\">{$gname}({$idee}" . ( $details['key'] ? "&mdash;{$details['key']}" : '' ) . ")</a></p></li>"; }
 		$guts .= '</ul>';
 	}
 	else if ($domain) { // Show a list of gnames.
 		$guts .= '<h1>Categories</h1><ul>';
-		foreach (fetchCategories($mysqli) as $category=>$gname) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}/{$domain}/{$gname}\">{$category}-{$gname}</a></p></li>"; }
+		foreach (fetchCategories($mysqli) as $category=>$gname) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$gname}\">{$category}-{$gname}</a></p></li>"; }
 		$guts .= '</ul>';
 	}
 	else { // Show a list of domains.
 		$guts .= '<h1>Domains</h1><ul>';
-		foreach (fetchDomains($mysqli) as $domain=>$dname) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}/{$domain}\">{$domain}-{$dname}</a></p></li>"; }
+		foreach (fetchDomains($mysqli) as $domain=>$dname) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}?" . KEY_DOMAIN. "={$domain}\">{$domain}-{$dname}</a></p></li>"; }
 		$guts .= '</ul>';
 	}
 	echo '<html><head><title>dView</title></head><body>' . $guts . '</body></html>';

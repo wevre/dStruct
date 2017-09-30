@@ -117,7 +117,14 @@ class dConnection {
 		$result->close();
 	}
 
-	function clearStructCache() { $this->structCache = null; }
+	function resetDomain($domain) {
+		$this->lastCategory = null;
+		$this->lastCode = null;
+		$this->minIdee = null;
+		$this->maxIdee = null;
+		$this->structCache = null;
+		$this->domain = $domain;
+	}
 
 	//
 	// !Transactions.
@@ -552,6 +559,7 @@ class dConnection {
 		// Clear out filter dictionary and cached fetchIdee statement.
 		unset($this->filter[$gname]);
 		unset($this->stmtCache['fetchIdee' . $table . '-_filter_-' . $gname]);
+		unset($this->structCache[$this->categoryForGname($gname)]);
 	}
 
 	function getFilterKey($gname, $table) {
@@ -567,7 +575,7 @@ class dConnection {
 	function getFilterSQL($gname, $table) {
 		// Return a snippet of SQL code that will limit codes to those in the filtered list. This method will be called for every table holding the fields of the struct, but if no filtered fields are in the requested table, it returns null. If there is no filter in place, return a blank string so the original SQL will be unaffected.
 		if ($this->filter[$gname]) {
-			if ($this->filter[$gname][$table]) { cnxn_error_log('filtered list for ' . $table . ' is ' . implode(', ', $this->filter[$gname][$table])); return ' AND t.code IN (' . implode(', ', $this->filter[$gname][$table]) . ')'; }
+			if ($this->filter[$gname][$table]) { return ' AND t.code IN (' . implode(', ', $this->filter[$gname][$table]) . ')'; }
 			else { return null; } // Skip this table because none of the filtered fields are in it.
 		} else {
 			return ''; // No filter in place so the SQL will be blank.
