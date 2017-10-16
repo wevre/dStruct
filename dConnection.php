@@ -1,4 +1,5 @@
 <?php
+namespace dStruct;
 /**
 * Defines the dConnection class that manages the connection to the database.
 *
@@ -103,7 +104,7 @@ class dConnection {
 
 	function fetchDefs() {
 		// Read in the def_code and def_category tables and construct the cross reference structures. Note that codes and categories are not domain-specific.
-		if (!($result = $this->mysqli->query('SELECT g.category, c.code, c.fname, c.`table`, g.gname FROM def_code AS c, def_category AS g WHERE c.category = g.category ORDER BY category, code FOR UPDATE', MYSQLI_STORE_RESULT))) { throw new Exception("Execute Error: {$this->mysqli->error}", $this->mysqli->errno); }
+		if (!($result = $this->mysqli->query('SELECT g.category, c.code, c.fname, c.`table`, g.gname FROM def_code AS c, def_category AS g WHERE c.category = g.category ORDER BY category, code FOR UPDATE', MYSQLI_STORE_RESULT))) { throw new\Exception("Execute Error: {$this->mysqli->error}", $this->mysqli->errno); }
 		while (list($category, $code, $fname, $table, $gname) = $result->fetch_row()) {
 			$this->codes[$gname][$fname] = $code;
 			$this->fnames[$code] = $fname;
@@ -137,26 +138,26 @@ class dConnection {
 			$this->lastCode = null;
 			$this->minIdee = null;
 			$this->maxIdee = null;
-			if (!$this->mysqli->query('START TRANSACTION')) { throw new Exception('Error starting transaction'); }
+			if (!$this->mysqli->query('START TRANSACTION')) { throw new\Exception('Error starting transaction'); }
 		}
 		$this->inTransaction++;
 	}
 
 	function commitTransaction() {
-		if (0 == $this->inTransaction) { throw new Exception('Error commitTransaction when not yet started'); }
+		if (0 == $this->inTransaction) { throw new\Exception('Error commitTransaction when not yet started'); }
 		if (0 == $this->inTransaction-1) { foreach ((array)$this->commitQueue as $struct) { $struct->commitStruct(); } $this->commitQueue = null; } // Commit everybody in the queue if we are about to end the transaction.
 		$this->inTransaction--;
-		if (0 == $this->inTransaction) { if (!$this->mysqli->query('COMMIT')) { throw new Exception('Error committing transaction'); } }
+		if (0 == $this->inTransaction) { if (!$this->mysqli->query('COMMIT')) { throw new\Exception('Error committing transaction'); } }
 	}
 
 	function rollbackTransaction() {
-		if (0 < $this->inTransaction) { if (!$this->mysqli->query('ROLLBACK')) { throw new Exception('Error rolling back transaction'); } }
+		if (0 < $this->inTransaction) { if (!$this->mysqli->query('ROLLBACK')) { throw new\Exception('Error rolling back transaction'); } }
 		$this->inTransaction = 0;
 		foreach ((array)$this->commitQueue as $struct) { $struct->rollback(); } // Restore fields to their original values.
 		$this->commitQueue = null; // Clear out the commit queue.
 	}
 
-	function confirmTransaction($caller) { if (!$this->inTransaction) { throw new Exception("{$caller}: not in a transaction"); } }
+	function confirmTransaction($caller) { if (!$this->inTransaction) { throw new\Exception("{$caller}: not in a transaction"); } }
 
 	function queueForCommit($struct) { if (!in_array($struct, (array)$this->commitQueue, true)) { $this->commitQueue[] = $struct; } }
 
@@ -199,11 +200,11 @@ class dConnection {
 	function getStatement($cKey, $sqlCallback, $types, $params) {
 		// Lazily prepare and cache the statement.
 		if (!$this->stmtCache[$cKey]) {
-			if (!($stmt = $this->mysqli->prepare( $sqlCallback instanceof Closure ? $sqlCallback() : $sqlCallback ))) { throw new Exception("Statement Error: {$stmt->error}", $stmt->errno); }
-			$reflectMethod = new ReflectionMethod('mysqli_stmt', 'bind_param');
+			if (!($stmt = $this->mysqli->prepare( $sqlCallback instanceof \Closure ? $sqlCallback() : $sqlCallback ))) { throw new \Exception("Statement Error: {$stmt->error}", $stmt->errno); }
+			$reflectMethod = new \ReflectionMethod('mysqli_stmt', 'bind_param');
 			$args[] = $types;
 			foreach (array_keys((array)$params) as $name) { $args[] = &$this->paramCache[$cKey][$name]; }
-			if (!($reflectMethod->invokeArgs($stmt, $args))) { throw new Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
+			if (!($reflectMethod->invokeArgs($stmt, $args))) { throw new\Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
 			$this->stmtCache[$cKey] = $stmt;
 		}
 		foreach ((array)$params as $name=>$value) { $this->paramCache[$cKey][$name] = $value; }
@@ -232,17 +233,17 @@ class dConnection {
 			// Pass the SQL as a callback so that if a filter is in place, we don't have to process the filter logic each time this method is called, but only the first time.
 			$callback = function () use($cnxn, $gname, $table) { return 'SELECT t.code, t.seq, t.value, c.fname FROM tbl_' . $table . ' AS t, def_code AS c, def_category AS g WHERE t.domain = ? AND t.code = c.code AND c.category = g.category AND g.gname = ? AND idee = ?' . $cnxn->getFilterSQL($gname, $table) . ' ORDER BY t.code, t.seq FOR UPDATE'; };
 			$stmt = $this->getStatement($cKey, $callback, 'isi', array('domain'=>$this->domain, 'gname'=>$gname, 'idee'=>$idee, ));
-			if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-			if (!$stmt->bind_result($code, $seq, $value, $fname)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+			if (!$stmt->execute()) { throw new \Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+			if (!$stmt->bind_result($code, $seq, $value, $fname)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 			while ($stmt->fetch()) {
 				if ($concat[$fname]) { $values[$fname] .= $value; }
 				else if (SEQ_CONCAT == $seq) { $values[$fname] = $value; $concat[$fname] = true; }
 				else if (SEQ_SINGLE == $seq) { $values[$fname] = $value; }
 				else { $values[$fname][] = $value; }
 			}
-			if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
+			if ($stmt->error) { throw new \Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 		}
-		if (!$values) { cnxn_error_log('no values fetched for ' . $gname . '(' . $idee . ')'); if (!$idee) { throw new Exception("Fetch Error: no values fetched for {$gname} and idee is null: `{$idee}`"); } return null; }
+		if (!$values) { cnxn_error_log('no values fetched for ' . $gname . '(' . $idee . ')'); if (!$idee) { throw new\Exception("Fetch Error: no values fetched for {$gname} and idee is null: `{$idee}`"); } return null; }
 		$result = new $gname($this, $idee, $values);
 		if ($key) { $result->key = $key; } // Set the key without triggering a register.
 		else if ($result->shouldFetchKey()) { $result->fetchKey(); }
@@ -257,11 +258,11 @@ class dConnection {
 	function fetchStructsForGname($gname) {
 		$cKey = 'fetchStructs';
 		$stmt = $this->getStatement($cKey, 'SELECT t.idee, t.category FROM meta_idees AS t, def_category AS g WHERE t.domain = ? AND t.category = g.category AND g.gname = ? ORDER BY t.idee FOR UPDATE', 'is', array('domain'=>$this->domain, 'gname'=>$gname, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-		if (!$stmt->bind_result($idee, $category)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->bind_result($idee, $category)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 		$idees = array();
 		while ($stmt->fetch()) { $idees[] = $idee; }
-		if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
+		if ($stmt->error) { throw new\Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 		$structs = array();
 		foreach ($idees as $idee) { $structs[$idee] = $this->fetchStructForIdee($gname, $idee); }
 		return $structs;
@@ -276,11 +277,11 @@ class dConnection {
 		$table = $this->tableForCode($code);
 		$cKey = 'fetchValues' . $table;
 		$stmt = $this->getStatement($cKey, 'SELECT t.idee, t.code, t.seq, t.value FROM tbl_' . $table . ' AS t, def_code AS c, def_category AS g WHERE t.domain = ? AND t.code = c.code AND c.category = g.category AND g.gname = ? AND t.code = ? ORDER BY t.idee, t.seq FOR UPDATE', 'isi', array('domain'=>$this->domain, 'gname'=>$gname, 'code'=>$code, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-		if (!$stmt->bind_result($idee, $code, $seq, $value)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->bind_result($idee, $code, $seq, $value)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 		$result = array();
 		while ($stmt->fetch()) { $result[] = array('idee'=>$idee, 'code'=>$code, 'seq'=>$seq, 'value'=>$value, ); }
-		if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
+		if ($stmt->error) { throw new\Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 		return $result;
 	}
 
@@ -292,16 +293,16 @@ class dConnection {
 		$gname = get_class($struct);
 		$cKey = 'registerKey';
 		$stmt = $this->getStatement($cKey, 'INSERT INTO meta_keys (domain, category, `key`, idee) VALUES ( ?, ?, ?, ? )', 'iisi', array('domain'=>$this->domain, 'category'=>$this->categoryForGname($gname), 'key'=>$key, 'idee'=>$struct->idee, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-		if (1 != $stmt->affected_rows) { throw new Exception('Invalid: number of affected rows after key insert was ' . $stmt->affected_rows . ' not 1'); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (1 != $stmt->affected_rows) { throw new\Exception('Invalid: number of affected rows after key insert was ' . $stmt->affected_rows . ' not 1'); }
 	}
 
 	function unregisterStructWithKey($struct, $key) {
 		$gname = get_class($struct);
 		$cKey = 'unregisterKey';
 		$stmt = $this->getStatement($cKey, 'DELETE FROM meta_keys WHERE domain = ? AND category = ? AND `key` = ?', 'iis', array('domain'=>$this->domain, 'category'=>$this->categoryForGname($gname), 'key'=>$key, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-		if (1 != $stmt->affected_rows) { throw new Exception('Invalid: number of affected rows after key delete was ' . $stmt->affected_rows . ' not 1'); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (1 != $stmt->affected_rows) { throw new\Exception('Invalid: number of affected rows after key delete was ' . $stmt->affected_rows . ' not 1'); }
 		$struct->key = null;
 		return;
 	}
@@ -309,8 +310,8 @@ class dConnection {
 	function fetchStructForKey($gname, $key) {
 		$cKey = 'fetchStructForKey';
 		$stmt = $this->getStatement($cKey, 'SELECT idee FROM meta_keys WHERE domain = ? AND category = ? AND `key` = ? FOR UPDATE', 'iis', array('domain'=>$this->domain, 'category'=>$this->categoryForGname($gname), 'key'=>$key, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-		if (!$stmt->bind_result($idee)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->bind_result($idee)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 		while ($stmt->fetch()) { $result = $idee; }
 		if ($result) {
 			$struct = $this->fetchStructForIdee($gname, $result, $key);
@@ -321,11 +322,11 @@ class dConnection {
 	function fetchKeyedStructs($gname) {
 		$cKey = 'fetchKeyedStructs';
 		$stmt = $this->getStatement($cKey, 'SELECT idee, `key` FROM meta_keys WHERE domain = ? AND category = ? FOR UPDATE', 'ii', array('domain'=>$this->domain, 'category'=>$this->categoryForGname($gname), ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-		if (!$stmt->bind_result($idee, $key)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->bind_result($idee, $key)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 		$idees = array();
 		while ($stmt->fetch()) { $idees[$idee] = $key; }
-		if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
+		if ($stmt->error) { throw new\Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 		$structs = array();
 		foreach ($idees as $idee=>$key) { $structs[$key] = $this->fetchStructForIdee($gname, $idee, $key); }
 		return $structs;
@@ -334,8 +335,8 @@ class dConnection {
 	function fetchKeyForStruct($struct) {
 		$cKey = 'fetchKeyForStruct';
 		$stmt = $this->getStatement($cKey, 'SELECT `key` FROM meta_keys WHERE domain = ? AND category = ? AND idee = ? FOR UPDATE', 'iii', array('domain'=>$this->domain, 'category'=>$this->categoryForGname(get_class($struct)), 'idee'=>$struct->idee, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-		if (!$stmt->bind_result($key)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->bind_result($key)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 		while ($stmt->fetch()) { $result = $key; }
 		return $result;
 	}
@@ -356,8 +357,8 @@ class dConnection {
 		else { $seq = SEQ_SINGLE; $value = (array)$value; }
 		foreach ($value as $item) {
 			$stmt = $this->getStatement($cKey, 'INSERT INTO tbl_' . $table . ' (domain, idee, code, seq, value) VALUES ( ?, ?, ?, ?, ? )', 'iiiis', array('domain'=>$this->domain, 'idee'=>$struct->idee, 'code'=>$code, 'seq'=>$seq, 'value'=>$item, ));
-			if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-			if (1 != $stmt->affected_rows) { throw new Exception('Invalid: number of affected rows after insert was ' . $stmt->affected_rows . ' not 1'); }
+			if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+			if (1 != $stmt->affected_rows) { throw new\Exception('Invalid: number of affected rows after insert was ' . $stmt->affected_rows . ' not 1'); }
 			$seq++;
 		}
 	}
@@ -373,7 +374,7 @@ class dConnection {
 		$table = $this->tableForCode($code);
 		$cKey = 'delete' . $table;
 		$stmt = $this->getStatement($cKey, 'DELETE FROM tbl_' . $table . ' WHERE domain = ? AND idee = ? AND code = ?', 'iii', array('domain'=>$this->domain, 'idee'=>$struct->idee, 'code'=>$code, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
 	}
 
 	//
@@ -383,7 +384,7 @@ class dConnection {
 	function deleteIdeeFromTable($table, $gname, $idee) {
 		$cKey = 'deleteIdee' . $table;
 		$stmt = $this->getStatement($cKey, 'DELETE t FROM tbl_' . $table . ' AS t, def_code AS c, def_category AS g WHERE t.domain = ? AND t.code = c.code AND c.category = g.category AND g.gname = ? AND idee = ?', 'isi', array('domain'=>$this->domain, 'gname'=>$gname, 'idee'=>$idee, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
 	}
 
 	function deleteStructWithIdee($gname, $idee) {
@@ -392,8 +393,8 @@ class dConnection {
 		foreach ($tables as $table) { $this->deleteIdeeFromTable($table, $gname, $idee); }
 		$cKey = 'deleteIdee';
 		$stmt = $this->getStatement($cKey, 'DELETE FROM meta_idees WHERE domain = ? AND category = ? AND idee = ?', 'iii', array('domain'=>$this->domain, 'category'=>$this->categoryForGname($gname), 'idee'=>$idee, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-		if (1 != $stmt->affected_rows) { throw new Exception('Invalid: number of affected rows after delete was ' . $stmt->affected_rows . ' not 1'); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (1 != $stmt->affected_rows) { throw new\Exception('Invalid: number of affected rows after delete was ' . $stmt->affected_rows . ' not 1'); }
 	}
 
 	//
@@ -405,8 +406,8 @@ class dConnection {
 		$category = $this->categoryForGname($gname);
 		$cKey = 'insertIdee';
 		$stmt = $this->getStatement($cKey, 'INSERT INTO meta_idees (domain, category, idee) VALUES ( ?, ?, ? )', 'iii', array('domain'=>$this->domain, 'category'=>$category, 'idee'=>$struct->idee, ));
-		if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-		if (1 != $stmt->affected_rows) { throw new Exception('Invalid: number of affected rows after idee insert was ' . $stmt->affected_rows . ' not 1'); }
+		if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+		if (1 != $stmt->affected_rows) { throw new\Exception('Invalid: number of affected rows after idee insert was ' . $stmt->affected_rows . ' not 1'); }
 	}
 
 	//
@@ -435,11 +436,11 @@ class dConnection {
 		if (is_null($this->maxIdee[$category]) || is_null($this->minIdee[$category])) {
 			$cKey = 'fetchIdee';
 			$stmt = $this->getStatement($cKey, 'SELECT MAX(idee), MIN(idee) FROM meta_idees WHERE domain = ? AND category = ? GROUP BY category FOR UPDATE', 'ii', array('domain'=>$this->domain, 'category'=>$category, ));
-			if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-			if (!$stmt->bind_result($maxIdee, $minIdee)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+			if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+			if (!$stmt->bind_result($maxIdee, $minIdee)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 			$result = array();
 			while ($stmt->fetch()) { $this->maxIdee[$category] = $maxIdee; $this->minIdee[$category] = $minIdee; }
-			if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
+			if ($stmt->error) { throw new\Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 		}
 		if ($this->minIdee[$category]>1) { return --$this->minIdee[$category]; }
 		else { return ++$this->maxIdee[$category]; }
@@ -459,8 +460,8 @@ class dConnection {
 			/*cnxn_error_log('no category for gname ' . $gname . ' fetched next category: ' . $category);*/
 			$cKey = 'insertCategory';
 			$stmt = $this->getStatement($cKey, 'INSERT INTO def_category (category, gname) VALUES ( ?, ? )', 'is', array('category'=>$category, 'gname'=>$gname, ));
-			if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-			if (1 != $stmt->affected_rows) { throw new Exception("Invalid: number of affected rows after category insert was {$stmt->affected_rows} not 1"); }
+			if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+			if (1 != $stmt->affected_rows) { throw new\Exception("Invalid: number of affected rows after category insert was {$stmt->affected_rows} not 1"); }
 			// Update the internal xref tables and store the variable for use in the rest of this function.
 			$this->categories[$gname] = $category;
 			$this->gnames[$category] = $gname;
@@ -473,15 +474,15 @@ class dConnection {
 				/*cnxn_error_log('no code for fname ' . $fname . ' fetched next code: ' . $code);*/
 				$cKey = 'insertCode';
 				$stmt = $this->getStatement($cKey, 'INSERT INTO def_code (category, code, fname, `table`) VALUES ( ?, ?, ?, ? )', 'iiss', array('category'=>$category, 'code'=>$code, 'fname'=>$fname, 'table'=>$table, ));
-				if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-				if (1 != $stmt->affected_rows) { throw new Exception("Invalid: number of affected rows after category insert was {$stmt->affected_rows} not 1"); }
+				if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+				if (1 != $stmt->affected_rows) { throw new\Exception("Invalid: number of affected rows after category insert was {$stmt->affected_rows} not 1"); }
 				// Update the internal xref tables.
 				$this->codes[$gname][$fname] = $code;
 				$this->fnames[$code] = $fname;
 				$this->tables[$code] = $table;
 				if (!in_array($table, (array)$this->tables[$gname])) { $this->tables[$gname][] = $table; }
 			}
-			if ($table != $this->tableForCode($this->codeForFname($gname, $fname))) { throw new Exception("Invalid: for gname [{$gname}], table returned by object [{$table}] does not match table stored in database [" . $this->tableForCode($this->codeForFname($gname, $fname)) . '].'); }
+			if ($table != $this->tableForCode($this->codeForFname($gname, $fname))) { throw new\Exception("Invalid: for gname [{$gname}], table returned by object [{$table}] does not match table stored in database [" . $this->tableForCode($this->codeForFname($gname, $fname)) . '].'); }
 		}
 		// Confirm that the struct has an idee.
 		if (!$struct->idee) {
@@ -501,7 +502,7 @@ class dConnection {
 	}
 
 	function resumeZombieWarnings() {
-		if (0 == $this->zombieWarn) { throw new Exception('Error resumeZombieWarnings when not yet paused'); }
+		if (0 == $this->zombieWarn) { throw new\Exception('Error resumeZombieWarnings when not yet paused'); }
 		$this->zombieWarn--;
 	}
 
@@ -512,7 +513,7 @@ class dConnection {
 	}
 
 	function stopZombieMode() {
-		if (0 == $this->zombieMode) { throw new Exception('Error stopZombieMode when not yet started'); }
+		if (0 == $this->zombieMode) { throw new\Exception('Error stopZombieMode when not yet started'); }
 		$this->zombieMode--;
 		if (0 == $this->zombieMode) {
 			foreach ((array)$this->zombiePool as $gname=>$pool) { foreach ((array)$pool as $item) { zombie_error_log("stopZombieMode: killing zombie {$item}"); $item->deleteStruct(); } }
@@ -523,7 +524,7 @@ class dConnection {
 	function inZombieMode() { return 0<$this->zombieMode; }
 
 	function pushZombie($struct) {
-		if (!$this->inZombieMode()) { throw new Exception('Error pushZombie when not in zombie mode'); }
+		if (!$this->inZombieMode()) { throw new\Exception('Error pushZombie when not in zombie mode'); }
 		$gname = get_class($struct);
 		zombie_error_log("pushZombie: $struct");
 		$struct->nullify(); // Set all the struct's fields to null, any owned refs wil be pushed into the zombie pool as well.

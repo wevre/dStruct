@@ -1,4 +1,5 @@
 <?php
+namespace dStruct;
 /**
 * Generates an HTML page for viewing dStruct objects.
 *
@@ -18,46 +19,46 @@ define('KEY_GNAME', 'g');
 define('KEY_IDEE', 'i');
 
 function fetchDomains($mysqli) {
-	if (!($result = $mysqli->query('SELECT domain, dname FROM def_domain ORDER BY domain FOR UPDATE', MYSQLI_STORE_RESULT))) { throw new Exception("Execute Error: {$mysqli->error}", $mysqli->errno); }
+	if (!($result = $mysqli->query('SELECT domain, dname FROM def_domain ORDER BY domain FOR UPDATE', MYSQLI_STORE_RESULT))) { throw new\Exception("Execute Error: {$mysqli->error}", $mysqli->errno); }
 	while (list($domain, $dname) = $result->fetch_row()) { $data[$domain] = $dname; }
 	$result->close();
 	return $data;
 }
 
 function fetchCategories($mysqli) {
-	if (!($result = $mysqli->query('SELECT category, gname FROM def_category ORDER BY category FOR UPDATE', MYSQLI_STORE_RESULT))) { throw new Exception("Execute Error: {$mysqli->error}", $mysqli->errno); }
+	if (!($result = $mysqli->query('SELECT category, gname FROM def_category ORDER BY category FOR UPDATE', MYSQLI_STORE_RESULT))) { throw new\Exception("Execute Error: {$mysqli->error}", $mysqli->errno); }
 	while (list($category, $gname) = $result->fetch_row()) { $data[$category] = $gname; }
 	$result->close();
 	return $data;
 }
 
 function fetchCodesForCategory($mysqli, $category) {
-	if (!($stmt = $mysqli->prepare('SELECT code, fname, `table` FROM def_code WHERE category = ? ORDER BY category, code FOR UPDATE'))) { throw new Exception("Statement Error: {$stmt->error}", $stmt->errno); }
-	if (!$stmt->bind_param('i', $category)) { throw new Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
-	if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-	if (!$stmt->bind_result($code, $fname, $table)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+	if (!($stmt = $mysqli->prepare('SELECT code, fname, `table` FROM def_code WHERE category = ? ORDER BY category, code FOR UPDATE'))) { throw new\Exception("Statement Error: {$stmt->error}", $stmt->errno); }
+	if (!$stmt->bind_param('i', $category)) { throw new\Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
+	if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+	if (!$stmt->bind_result($code, $fname, $table)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 	while ($stmt->fetch()) { $data[$code] = array('code'=>$code, 'fname'=>$fname, 'table'=>$table, ); }
-	if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
+	if ($stmt->error) { throw new\Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 	$stmt->close();
 	return $data;
 }
 
 function fetchStructsForCategory($mysqli, $domain, $category) {
 	// Fetch the idees from meta_idees.
-	if (!($stmt = $mysqli->prepare('SELECT idee FROM meta_idees WHERE domain = ? AND category = ? ORDER BY idee FOR UPDATE'))) { throw new Exception("Statement Error: {$stmt->error}", $stmt->errno); }
-	if (!$stmt->bind_param('ii', $domain, $category)) { throw new Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
-	if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-	if (!$stmt->bind_result($idee)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+	if (!($stmt = $mysqli->prepare('SELECT idee FROM meta_idees WHERE domain = ? AND category = ? ORDER BY idee FOR UPDATE'))) { throw new\Exception("Statement Error: {$stmt->error}", $stmt->errno); }
+	if (!$stmt->bind_param('ii', $domain, $category)) { throw new\Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
+	if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+	if (!$stmt->bind_result($idee)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 	while ($stmt->fetch()) { $data[$idee] = array('idee'=>$idee, ); }
-	if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
+	if ($stmt->error) { throw new\Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 	$stmt->close();
 	// Then check for keys in meta_keys.
-	if (!($stmt = $mysqli->prepare('SELECT idee, `key` FROM meta_keys WHERE domain = ? AND category = ? FOR UPDATE'))) { throw new Exception("Statement Error: {$stmt->error}", $stmt->errno); }
-	if (!$stmt->bind_param('ii', $domain, $category)) { throw new Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
-	if (!$stmt->execute()) { throw new Exception("Execute Error: {$stmt->error}", $stmt->errno); }
-	if (!$stmt->bind_result($idee, $key)) { throw new Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
+	if (!($stmt = $mysqli->prepare('SELECT idee, `key` FROM meta_keys WHERE domain = ? AND category = ? FOR UPDATE'))) { throw new\Exception("Statement Error: {$stmt->error}", $stmt->errno); }
+	if (!$stmt->bind_param('ii', $domain, $category)) { throw new\Exception("Bind Param Error: {$stmt->error}", $stmt->errno); }
+	if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
+	if (!$stmt->bind_result($idee, $key)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 	while ($stmt->fetch()) { $data[$idee]['key'] = $key; }
-	if ($stmt->error) { throw new Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
+	if ($stmt->error) { throw new\Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 	$stmt->close();
 	return $data;
 }
@@ -135,7 +136,7 @@ do try {
 	}
 	echo '<html><head><title>dView</title></head><body>' . $guts . '</body></html>';
 	exit;
-} catch (Exception $e) {
+} catch \Exception $e) {
 	header('Content-type: text-plain; charset=utf-8');
 	echo "Error {$e->getCode()}: (line: {$e->getline()} of {$e->getfile()})\n{$e->getMessage()}\n{$e->getTraceAsString()}\n";
 	exit;
