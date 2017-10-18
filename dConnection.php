@@ -222,6 +222,7 @@ class dConnection {
 	// !Fetch a single struct by idee.
 	//
 
+	/** Returns a struct of type $gname for the given $idee. Structs know themselves if they have a key, and this method will retrieve it. But there are situations where the key is already known, provided by the $key parameter, and in those cases this method will simply set the key as provided and not fetch it. */
 	function fetchStructForIdee($gname, $idee, $key=null) {
 		$category = $this->categoryForGname($gname);
 		// Return from the internal cache if present.
@@ -314,7 +315,7 @@ class dConnection {
 		if (!$stmt->bind_result($idee)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 		while ($stmt->fetch()) { $result = $idee; }
 		if ($result) {
-			$struct = $this->fetchStructForIdee($gname, $result, $key);
+			$struct = $this->fetchStructForIdee($gname, $result, $key); //Note: We know the key already.
 			return $struct;
 		} else { return null; }
 	}
@@ -328,6 +329,7 @@ class dConnection {
 		while ($stmt->fetch()) { $idees[$idee] = $key; }
 		if ($stmt->error) { throw new\Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
 		$structs = array();
+		//NOTE: We know the key already, so we provide it to `fetchStructForIdee`.
 		foreach ($idees as $idee=>$key) { $structs[$key] = $this->fetchStructForIdee($gname, $idee, $key); }
 		return $structs;
 	}
