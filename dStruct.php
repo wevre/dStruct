@@ -24,16 +24,12 @@ spl_autoload_register(function ($class) { if ('ds' == substr($class, 0, 2)) { in
 require_once 'dStruct/dConnection.php';
 
 //
-// !Constant used to construct URL queries.
-//
-
-define('KEY_IDEE', 'i'); //TODO: we can move this inside dStruct as a const, and users can, if they so choose, define it outside of dStruct with `define`. (see how we did KEY_ACTION inside of FormBuilder).
-
-//
 // !Represents an object stored in the database.
 //
 
 class dStruct {
+
+	const KEY_IDEE = 'i';
 
 	public $cnxn;
 	public $idee;
@@ -85,25 +81,30 @@ class dStruct {
 	// !Field Definitions -- For subclasses to override.
 	//
 
-	function dStructFieldDefs() {
-		// Return the fields defined by this object, mapping each fname to the field type (where field type matches the database table used to store the field).
-		// Example: return [ 'name'=>dCONCAT, 'address'=>dCONCAT, 'verified'=>dBOOL, ];
-		// Subclasses should override this method to provide their distinct fields.
-		// Note the implementation as an instance method, and not as a static method -- this means we can only query field defs on existing objects, and not on the class. That should be okay, because for existing data, the known code and category definitions are already captured in the def_ tables. Even if a new field had popped up in the class definition, no data for that field would yet exist in the database.
-		// Note also that we have not provided any mechanism for class inheritance, but subclass heirarchies are free to do so. They just have to merge their parent class field defs with their own and return that merged result.
-		return array();
+	/**
+	* Returns the fields defined by this object, mapping each fname to the field type (where field type matches the database table used to store the field.
+	* Example: return [ 'name'=>dConnection::dCONCAT, 'address'=>dConnection::dCONCAT, 'verified'=>dConnection::dBOOL, ];
+	* Subclasses should override this method to provide their distinct fields.
+	* In contrast to prior versions, this method is now static, and in combination with ::fieldDefs provides a mechanism for inheritance.
+	*/
+	static function selfFieldDefs() { return []; }
+
+	static function fieldDefs() {
+		$gname = get_called_class();
+		if ($parent = get_parent_class($gname)) { return array_merge(static::selfFieldDefs(), $parent::fieldDefs()); }
+		else { return static::selfFieldDefs(); }
 	}
 
-	function ownsRef($fname) {
+	static function ownsRef($fname) {
 		// Return true if the called object "owns" the referenced object. Owned objects will be deleted along with the object.
 		// Subclasses need to return true or false if `fname` is one of their fields, otherwise call super which will throw this exception.
 		throw new\Exception('Invalid fname ' . $fname . ' called for ownsRef');
 	}
 
-	function gnameForRefField($fname) {
+	static function gnameForRef($fname) {
 		// Return the gname of the object pointed at in this object's ref field.
 		// Subclasses need to return a proper fname for recognized fields, and call super otherwise, which will throw an exception.
-		throw new\Exception('Invalid fname ' . $fname . ' called for gnameForRefField');
+		throw new\Exception('Invalid fname ' . $fname . ' called for gnameForRef');
 	}
 
 	function gnameForKeyField($fname) {
@@ -124,9 +125,9 @@ class dStruct {
 	// !Methods for determining field type of a given fname.
 	//
 
-	function fnameIsRef($fname) { $fields = $this->dStructFieldDefs(); return (dREF == $fields[$fname]); }
+	function fnameIsRef($fname) { return (dConnection::dREF == static::fieldDefs()[$fname]); }
 
-	function fnameIsConcat($fname) { $fields = $this->dStructFieldDefs(); return (dCONCAT == $fields[$fname]); }
+	function fnameIsConcat($fname) { return (dConnection::dCONCAT == static::fieldDefs()[$fname]); }
 
 	//
 	// !Getting and setting the key for an object.
@@ -134,7 +135,7 @@ class dStruct {
 
 	function fetchKey() { if (!$this->key && ($key = $this->cnxn->fetchKeyForStruct($this))) { $this->key = $key; } }
 
-	function shouldFetchKey() { return false; } // Subclasses can override to indicate the connection should look for a key when the struct is fetched.
+	static function shouldFetchKey() { return false; } // Subclasses can override to indicate the connection should look for a key when the struct is fetched.
 
 	function setKey($key) {
 		$this->cnxn->confirmTransaction('setKey');
@@ -176,7 +177,7 @@ class dStruct {
 		// Check for zombies.
 		if (!is_null($this->values[$fname]) && $this->fnameIsRef($fname) && $this->ownsRef($fname)) { // Test here is: are we about to blow away an owned ref and leave it stranded as a zombie in the database?.
 			if ($this->cnxn->inZombieMode()) { zombie_error_log("dStruct::__set: pushing zombies for {$this}->{$fname}"); foreach ((array)$this->structsFromRefArray($fname) as $struct) { $this->cnxn->pushZombie($struct); } }
-			else if ($this->cnxn->shouldWarnZombie()) { throw new\Exception("ZOMBIE fatal: {$this}->{$fname} being set to " . ( $value ? $value : 'null' ) . " is an owned reference to {$this->gnameForRefField($fname)}."); }
+			else if ($this->cnxn->shouldWarnZombie()) { throw new\Exception("ZOMBIE fatal: {$this}->{$fname} being set to " . ( $value ? $value : 'null' ) . " is an owned reference to {$this->gnameForRef($fname)}."); }
 		}
 		// Determine what action to take based on old and new value.
 		unset($this->insertQueue[$fname]);
@@ -221,14 +222,14 @@ class dStruct {
 	// !Return a struct stored as a ref.
 	//
 
-	function structFromRefField($fname) { return $this->cnxn->fetchStructForIdee($this->gnameForRefField($fname), $this->values[$fname]); }
+	function structFromRefField($fname) { return $this->cnxn->fetchStructForIdee($this->gnameForRef($fname), $this->values[$fname]); }
 
 	//
 	// !Return array of structs stored in a ref array.
 	//
 
 	function structsFromRefArray($fname) {
-		$gname = $this->gnameForRefField($fname);
+		$gname = $this->gnameForRef($fname);
 		$cnxn = $this->cnxn;
 		return array_map(function($idee) use($cnxn, $gname) { return $cnxn->fetchStructForIdee($gname, $idee); }, (array)$this->values[$fname]);
 	}
@@ -244,7 +245,7 @@ class dStruct {
 	//
 
 	function structsFromKeyArray($fname) {
-		$gname = $this->gnameForRefField($fname);
+		$gname = $this->gnameForRef($fname);
 		$cnxn = $this->cnxn;
 		return array_map(function($key) use($cnxn, $gname) { return $cnxn->fetchStructForKey($gname, $key); }, (array)$this->values[$fname]);
 	}
@@ -260,7 +261,7 @@ class dStruct {
 		foreach ($this->values as $fname=>$value) {
 			if ($this->fnameIsRef($fname) && $this->ownsRef($fname)) {
 				foreach ((array)$value as $idee) {
-					if ($item = $this->cnxn->fetchStructForIdee($this->gnameForRefField($fname), $idee)) { $item->deleteStruct(); }
+					if ($item = $this->cnxn->fetchStructForIdee($this->gnameForRef($fname), $idee)) { $item->deleteStruct(); }
 				}
 			}
 		}

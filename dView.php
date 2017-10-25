@@ -66,7 +66,7 @@ function fetchStructsForCategory($mysqli, $domain, $category) {
 function getValueDisplay($struct, $fname, $value) {
 	global $link_pre, $base_name, $domain;
 	if ($struct->fnameIsRef($fname)) {
-		$ref_gname = $struct->gnameForRefField($fname);
+		$ref_gname = $struct->gnameForRef($fname);
 		return "<a href=\"{$link_pre}/{$base_name}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$ref_gname}&" . KEY_IDEE . "={$value}\">{$ref_gname}({$value})</a>";
 	} else {
 		return htmlentities($value);

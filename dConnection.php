@@ -19,31 +19,27 @@ namespace dStruct;
 // !dConnection class that manages the connection to the database.
 //
 
-define('CONCAT_LENGTH', 90); // Must match the length of the varchar field defined in mysql (typcially 90).
-
-define('dBOOL', 'bool');
-define('dCHAR03', 'char03');
-define('dDATETIME', 'datetime');
-define('dDECIMAL', 'decimal');
-define('dINT', 'int');
-define('dFLOAT', 'float');
-define('dTEXT', 'text');
-define('dREF', 'ref');
-define('dKEY', 'key');
-define('dCONCAT', 'concat');
-
-//
-// !Some special seq values.
-//
-
-define('SEQ_CONCAT', -2);
-define('SEQ_SINGLE', -1);
-
 function zombie_error_log($msg) { /*error_log("[zombie] {$msg}");*/ }
 
 function cnxn_error_log($msg) { error_log("[cnxn] {$msg}"); }
 
 class dConnection {
+
+	const dBOOL = 'bool';
+	const dCHAR03 = 'char03';
+	const dDATETIME = 'datetime';
+	const dDECIMAL = 'decimal';
+	const dINT = 'int';
+	const dFLOAT = 'float';
+	const dTEXT = 'text';
+	const dREF = 'ref';
+	const dKEY = 'key';
+	const dCONCAT = 'concat';
+
+	const SEQ_CONCAT = -2;
+	const SEQ_SINGLE = -1;
+
+	const CONCAT_LENGTH = 90; // Must match the length of the varchar field defined in the database.
 
 	protected $mysqli;
 	protected $domain;
@@ -200,7 +196,7 @@ class dConnection {
 	function getStatement($cKey, $sqlCallback, $types, $params) {
 		// Lazily prepare and cache the statement.
 		if (!$this->stmtCache[$cKey]) {
-			if (!($stmt = $this->mysqli->prepare( $sqlCallback instanceof \Closure ? $sqlCallback() : $sqlCallback ))) { throw new \Exception("Statement Error: {$stmt->error}", $stmt->errno); }
+			if (!($stmt = $this->mysqli->prepare( $sqlCallback instanceof \Closure ? $sqlCallback() : $sqlCallback ))) { throw new \Exception("Statement Error: {$this->mysqli->error}", $this->mysqli->errno); }
 			$reflectMethod = new \ReflectionMethod('mysqli_stmt', 'bind_param');
 			$args[] = $types;
 			foreach (array_keys((array)$params) as $name) { $args[] = &$this->paramCache[$cKey][$name]; }
@@ -238,8 +234,8 @@ class dConnection {
 			if (!$stmt->bind_result($code, $seq, $value, $fname)) { throw new\Exception("Bind Result Error: {$stmt->error}", $stmt->errno); }
 			while ($stmt->fetch()) {
 				if ($concat[$fname]) { $values[$fname] .= $value; }
-				else if (SEQ_CONCAT == $seq) { $values[$fname] = $value; $concat[$fname] = true; }
-				else if (SEQ_SINGLE == $seq) { $values[$fname] = $value; }
+				else if (self::SEQ_CONCAT == $seq) { $values[$fname] = $value; $concat[$fname] = true; }
+				else if (self::SEQ_SINGLE == $seq) { $values[$fname] = $value; }
 				else { $values[$fname][] = $value; }
 			}
 			if ($stmt->error) { throw new \Exception("Fetch Error: {$stmt->error}", $stmt->errno); }
@@ -247,7 +243,7 @@ class dConnection {
 		if (!$values) { cnxn_error_log('no values fetched for ' . $gname . '(' . $idee . ')'); if (!$idee) { throw new\Exception("Fetch Error: no values fetched for {$gname} and idee is null: `{$idee}`"); } return null; }
 		$result = new $gname($this, $idee, $values);
 		if ($key) { $result->key = $key; } // Set the key without triggering a register.
-		else if ($result->shouldFetchKey()) { $result->fetchKey(); }
+		else if ($gname::shouldFetchKey()) { $result->fetchKey(); }
 		$this->structCache[$category][$idee] = $result;
 		return $result;
 	}
@@ -355,8 +351,8 @@ class dConnection {
 		$table = $this->tableForCode($code);
 		$cKey = 'insert' . $table;
 		if (is_array($value)) { $seq = 0; }
-		else if ($struct->fnameIsConcat($fname)) { $seq = SEQ_CONCAT; $value = str_split($value, CONCAT_LENGTH); }
-		else { $seq = SEQ_SINGLE; $value = (array)$value; }
+		else if ($struct->fnameIsConcat($fname)) { $seq = self::SEQ_CONCAT; $value = str_split($value, self::CONCAT_LENGTH); }
+		else { $seq = self::SEQ_SINGLE; $value = (array)$value; }
 		foreach ($value as $item) {
 			$stmt = $this->getStatement($cKey, 'INSERT INTO tbl_' . $table . ' (domain, idee, code, seq, value) VALUES ( ?, ?, ?, ?, ? )', 'iiiis', array('domain'=>$this->domain, 'idee'=>$struct->idee, 'code'=>$code, 'seq'=>$seq, 'value'=>$item, ));
 			if (!$stmt->execute()) { throw new\Exception("Execute Error: {$stmt->error}", $stmt->errno); }
@@ -469,7 +465,7 @@ class dConnection {
 			$this->gnames[$category] = $gname;
 		}
 		// Confirm that all the fields have a code.
-		$fieldDefs = $struct->dStructFieldDefs(); //TODO: add error checking and logging here if the returned fieldDefs is not an array or is empty
+		$fieldDefs = $gname::fieldDefs();
 		foreach ($fieldDefs as $fname=>$table) {
 			if (!($code = $this->codeForFname($gname, $fname, true))) {
 				$code = $this->getNextCode();
