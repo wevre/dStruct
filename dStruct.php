@@ -107,7 +107,7 @@ class dStruct {
 		throw new\Exception('Invalid fname ' . $fname . ' called for gnameForRef');
 	}
 
-	function gnameForKeyField($fname) {
+	static function gnameForKey($fname) {
 		// Return the gname of the object pointed at in this object's key field.
 		// Subclasses need to return a proper fname for recognized fields, and call super otherwise, which will throw an exception.
 		throw new\Exception('Invalid fname ' . $fname . ' called for gnameForKeyField');
