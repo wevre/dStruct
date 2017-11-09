@@ -69,6 +69,8 @@ class dConnection {
 	// Filtering fields.
 	private $filter = array();
 
+	static protected $shared_cnxn;
+
 	//
 	// !Contructors and preparing the connection for reading or writing.
 	//
@@ -77,6 +79,7 @@ class dConnection {
 		$this->mysqli = $mysqli;
 		$this->domain = $domain;
 		$this->fetchDefs();
+		self::registerSharedConnection($this);
 	}
 
 	function __destruct() {
@@ -123,6 +126,14 @@ class dConnection {
 		$this->domain = $domain;
 	}
 
+	function resetDefs() {
+		unset($this->codes);
+		unset($this->fnames);
+		unset($this->tables);
+		unset($this->categories);
+		unset($this->gnames);
+	}
+
 	//
 	// !Transactions.
 	//
@@ -163,6 +174,18 @@ class dConnection {
 
 	function getMysqli() { return $this->mysqli; }
 	function getDomain() { return $this->domain; }
+
+	//
+	// !Shared connection
+	//
+
+	static function sharedConnection() {
+		return self::$shared_cnxn;
+	}
+
+	static function registerSharedConnection($cnxn) {
+		self::$shared_cnxn = $cnxn;
+	}
 
 	//
 	// !Access the cross-reference tables.

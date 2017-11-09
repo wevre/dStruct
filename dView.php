@@ -64,10 +64,10 @@ function fetchStructsForCategory($mysqli, $domain, $category) {
 }
 
 function getValueDisplay($struct, $fname, $value) {
-	global $link_pre, $base_name, $domain;
+	global $path, $domain;
 	if ($struct->fnameIsRef($fname)) {
 		$ref_gname = $struct->gnameForRef($fname);
-		return "<a href=\"{$link_pre}/{$base_name}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$ref_gname}&" . KEY_IDEE . "={$value}\">{$ref_gname}({$value})</a>";
+		return "<a href=\"{$path}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$ref_gname}&" . KEY_IDEE . "={$value}\">{$ref_gname}({$value})</a>";
 	} else {
 		return htmlentities($value);
 	}
@@ -92,17 +92,14 @@ function getStructValues($struct) {
 // !Display dStruct objects from the database.
 //
 
-//NOTE: This script expects the caller to set up four important global variables:
-//    $link_pre, which will precede all URL's;
-//    $cnxn, which will be a dConnection;
-//    $mysqli, a connection to the database; and,
-//    $base_name, which will be the starting path of all URL's (after the $link_pre).
-// Based on the above, links will all be {$link_pre}/{$base_name}/{$domain}/{$gname}/{$idee}.
+//NOTE: This script expects the caller to set up the $cnxn global variables.
 
-$path = getURLPath();
+$path = \wCommon\getURLPath();
 $domain = $_GET[KEY_DOMAIN];
 $gname = $_GET[KEY_GNAME];
 $idee = $_GET[KEY_IDEE];
+$cnxn = dConnection::sharedConnection();
+$mysqli = $cnxn->getMysqli();
 
 do try {
 	if ($idee) { // Show the struct.
@@ -121,22 +118,22 @@ do try {
 		foreach (fetchCodesForCategory($mysqli, $category) as $code=>$details) { $guts .= "<li><p>{$code}-{$details['fname']} ({$details['table']})</p></li>"; }
 		$guts .= '</ul>';
 		$guts .= '<h2>Objects</h2><ul>';
-		foreach (fetchStructsForCategory($mysqli, $domain, $category) as $idee=>$details) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$gname}&" . KEY_IDEE . "={$idee}\">{$gname}({$idee}" . ( $details['key'] ? "&mdash;{$details['key']}" : '' ) . ")</a></p></li>"; }
+		foreach (fetchStructsForCategory($mysqli, $domain, $category) as $idee=>$details) { $guts .= "<li><p><a href=\"{$path}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$gname}&" . KEY_IDEE . "={$idee}\">{$gname}({$idee}" . ( $details['key'] ? "&mdash;{$details['key']}" : '' ) . ")</a></p></li>"; }
 		$guts .= '</ul>';
 	}
 	else if ($domain) { // Show a list of gnames.
 		$guts .= '<h1>Categories</h1><ul>';
-		foreach (fetchCategories($mysqli) as $category=>$gname) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$gname}\">{$category}-{$gname}</a></p></li>"; }
+		foreach (fetchCategories($mysqli) as $category=>$gname) { $guts .= "<li><p><a href=\"{$path}?" . KEY_DOMAIN. "={$domain}&" . KEY_GNAME . "={$gname}\">{$category}-{$gname}</a></p></li>"; }
 		$guts .= '</ul>';
 	}
 	else { // Show a list of domains.
 		$guts .= '<h1>Domains</h1><ul>';
-		foreach (fetchDomains($mysqli) as $domain=>$dname) { $guts .= "<li><p><a href=\"{$link_pre}/{$base_name}?" . KEY_DOMAIN. "={$domain}\">{$domain}-{$dname}</a></p></li>"; }
+		foreach (fetchDomains($mysqli) as $domain=>$dname) { $guts .= "<li><p><a href=\"{$path}?" . KEY_DOMAIN. "={$domain}\">{$domain}-{$dname}</a></p></li>"; }
 		$guts .= '</ul>';
 	}
 	echo '<html><head><title>dView</title></head><body>' . $guts . '</body></html>';
 	exit;
-} catch \Exception $e) {
+} catch (\Exception $e) {
 	header('Content-type: text-plain; charset=utf-8');
 	echo "Error {$e->getCode()}: (line: {$e->getline()} of {$e->getfile()})\n{$e->getMessage()}\n{$e->getTraceAsString()}\n";
 	exit;
