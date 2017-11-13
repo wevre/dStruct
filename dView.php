@@ -14,8 +14,6 @@ namespace dStruct;
 *
 */
 
-require_once 'dStruct/dConnection.php';
-
 define('KEY_DOMAIN', 'd');
 define('KEY_GNAME', 'g');
 define('KEY_IDEE', 'i');
