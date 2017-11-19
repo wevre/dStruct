@@ -98,19 +98,19 @@ class dStruct {
 	static function ownsRef($fname) {
 		// Return true if the called object "owns" the referenced object. Owned objects will be deleted along with the object.
 		// Subclasses need to return true or false if `fname` is one of their fields, otherwise call super which will throw this exception.
-		throw new\Exception('Invalid fname ' . $fname . ' called for ownsRef');
+		throw new \Exception('Invalid fname ' . $fname . ' called for ownsRef');
 	}
 
 	static function gnameForRef($fname) {
 		// Return the gname of the object pointed at in this object's ref field.
 		// Subclasses need to return a proper fname for recognized fields, and call super otherwise, which will throw an exception.
-		throw new\Exception('Invalid fname ' . $fname . ' called for gnameForRef');
+		throw new \Exception('Invalid fname ' . $fname . ' called for gnameForRef');
 	}
 
 	static function gnameForKey($fname) {
 		// Return the gname of the object pointed at in this object's key field.
 		// Subclasses need to return a proper fname for recognized fields, and call super otherwise, which will throw an exception.
-		throw new\Exception('Invalid fname ' . $fname . ' called for gnameForKeyField');
+		throw new \Exception('Invalid fname ' . $fname . ' called for gnameForKeyField');
 	}
 
 	//
@@ -177,7 +177,7 @@ class dStruct {
 		// Check for zombies.
 		if (!is_null($this->values[$fname]) && $this->fnameIsRef($fname) && $this->ownsRef($fname)) { // Test here is: are we about to blow away an owned ref and leave it stranded as a zombie in the database?.
 			if ($this->cnxn->inZombieMode()) { zombie_error_log("dStruct::__set: pushing zombies for {$this}->{$fname}"); foreach ((array)$this->structsFromRefArray($fname) as $struct) { $this->cnxn->pushZombie($struct); } }
-			else if ($this->cnxn->shouldWarnZombie()) { throw new\Exception("ZOMBIE fatal: {$this}->{$fname} being set to " . ( $value ? $value : 'null' ) . " is an owned reference to {$this->gnameForRef($fname)}."); }
+			else if ($this->cnxn->shouldWarnZombie()) { throw new \Exception("ZOMBIE fatal: {$this}->{$fname} being set to " . ( $value ? $value : 'null' ) . " is an owned reference to {$this->gnameForRef($fname)}."); }
 		}
 		// Determine what action to take based on old and new value.
 		unset($this->insertQueue[$fname]);
@@ -273,10 +273,10 @@ class dStruct {
 	//
 
 	function addToRefArray($fname, $children, $sort_callback=null) {
-		if ($this->cnxn->inZombieMode()) { throw new\Exception('Error addToRefArray while in zombie mode'); }
-		if (!is_array($children)) { throw new\Exception('addToRefArray children must be an array'); }
+		if ($this->cnxn->inZombieMode()) { throw new \Exception('Error addToRefArray while in zombie mode'); }
+		if (!is_array($children)) { throw new \Exception('addToRefArray children must be an array'); }
 		$this->cnxn->confirmTransaction('addToRefArray');
-		if (!$this->fnameIsRef($fname) || !$this->ownsRef($fname)) { throw new\Exception("Error: addToRefArray fname $fname is not a ref or is not owned by $this."); }
+		if (!$this->fnameIsRef($fname) || !$this->ownsRef($fname)) { throw new \Exception("Error: addToRefArray fname $fname is not a ref or is not owned by $this."); }
 		$this->cnxn->pauseZombieWarnings();
 		$newKids = array_merge((array)$this->values[$fname], array_map(function($c) { return $c->idee; }, $children));
 		if ($sort_callback) { usort($newKids, $sort_callback); }
@@ -285,10 +285,10 @@ class dStruct {
 	}
 
 	function removeFromRefArray($fname, $children) { // Delete struct and remove from parent's array.
-		if ($this->cnxn->inZombieMode()) { throw new\Exception('Error removeFromRefArray while in zombie mode'); }
-		if (!is_array($children)) { throw new\Exception('removeFromRefArray children must be an array'); }
+		if ($this->cnxn->inZombieMode()) { throw new \Exception('Error removeFromRefArray while in zombie mode'); }
+		if (!is_array($children)) { throw new \Exception('removeFromRefArray children must be an array'); }
 		$this->cnxn->confirmTransaction('removeFromRefArray');
-		if (!$this->fnameIsRef($fname) || !$this->ownsRef($fname)) { throw new\Exception("Error: removeFromRefArray fname $fname is not a ref or is not owned by $this."); }
+		if (!$this->fnameIsRef($fname) || !$this->ownsRef($fname)) { throw new \Exception("Error: removeFromRefArray fname $fname is not a ref or is not owned by $this."); }
 		array_walk($children, function($c) { $c->deleteStruct(); });
 		$this->cnxn->pauseZombieWarnings();
 		$this->__set($fname, array_diff((array)$this->values[$fname], array_map(function($c) { return $c->idee; }, $children)));
