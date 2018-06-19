@@ -66,7 +66,7 @@ class dStruct {
 			}
 			$values_array[$fname] = $value;
 		}
-		$item = $gname::createNew($this->cnxn, $values_array);
+		$item = $gname::createNewWithConnection($this->cnxn, $values_array);
 		/*cnxn_error_log("copied $this into $item");*/
 		return $item;
 	}

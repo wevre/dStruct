@@ -472,7 +472,7 @@ class dConnection {
 	//
 
 	function confirmStruct($struct) {
-		$this->confirmTransaction('confirmStruct'); // This function should be called within an object's commitStruct() or createNew() method, so we should be inside a transaction.
+		$this->confirmTransaction('confirmStruct'); // This function should be called within an object's commitStruct() or createNewWithConnection() method, so we should be inside a transaction.
 		$gname = get_class($struct);
 		/*cnxn_error_log('confirming struct ' . $struct);*/
 		// Confirm that we have a category for this gname.
