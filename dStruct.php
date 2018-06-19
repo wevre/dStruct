@@ -39,7 +39,7 @@ class dStruct {
 	protected $deleteQueue;
 	protected $updateQueue;
 
-	static function createNew($cnxn, $values=array()) {
+	static function createNewWithConnection($cnxn, $values=array()) {
 		$cnxn->confirmTransaction('createNew');
 		$gname = get_called_class();
 		/*cnxn_error_log('creating new object of type ' . $gname);*/
