@@ -294,5 +294,3 @@ class dStruct {
 	}
 
 } // class dStruct
-
-?>

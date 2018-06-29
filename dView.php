@@ -138,5 +138,3 @@ do try {
 } while (0);
 echo '<html><head><title>dView</title></head><body><p>Nothing to show</p></body></html>';
 exit;
-
-?>

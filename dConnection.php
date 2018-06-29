@@ -605,5 +605,3 @@ class dConnection {
 	}
 
 } // class dConnection
-
-?>
