@@ -20,8 +20,6 @@ namespace dStruct;
 
 spl_autoload_register(function ($class) { if ('ds' == substr($class, 0, 2)) { include $class . '.php'; } } );
 
-require_once 'dStruct/dConnection.php';
-
 //
 // !Represents an object stored in the database.
 //
