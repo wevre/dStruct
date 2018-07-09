@@ -11,6 +11,7 @@ namespace dStruct;
 * @created 2009-03-17
 * @revised 2015-02-09
 *
+* @version 1.0.1
 */
 
 //

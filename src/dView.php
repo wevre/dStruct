@@ -10,6 +10,7 @@ namespace dStruct;
 * @author Mike Weaver
 * @created 2014-02-12
 *
+* @version 1.0.1
 */
 
 define('KEY_DOMAIN', 'd');

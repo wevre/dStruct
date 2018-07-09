@@ -1,0 +1,20 @@
+{
+	"name": "wevrem/dStruct",
+	"description": "Store and retrieve PHP objects in MYSQL database",
+	"type": "library",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Mike Weaver",
+			"role": "developer"
+		}
+	],
+	"autoload": {
+		"psr-4": {
+			"dStruct\\": "src/"
+		}
+	},
+	"support": {
+		"source": "https://github.com/wevrem/dStruct"
+	},
+}
