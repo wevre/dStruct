@@ -1,5 +1,5 @@
 {
-	"name": "wevrem/dStruct",
+	"name": "wevrem/dstruct",
 	"description": "Store and retrieve PHP objects in MYSQL database",
 	"type": "library",
 	"license": "MIT",
