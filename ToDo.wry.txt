@@ -2,6 +2,10 @@ project : dStruct ToDo
 	author : Mike Weaver
 	created : 2015-02-13
 
+[] (2018-07-09) : Composer integration
+	Add a `composer.json` file and reorganize as necessary to work with Composer
+	and Packagist.
+
 [] (2018-07-04) : Keyed shared connections
 	sharedConnection() can take a key and return a connection associated with a
 	key. Supplying no key uses "_default_". This solves BYT where we have two
