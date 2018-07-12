@@ -2,7 +2,7 @@ project : dStruct ToDo
 	author : Mike Weaver
 	created : 2015-02-13
 
-[] (2018-07-09) : Composer integration
+[X] (2018-07-09) : Composer integration
 	Add a `composer.json` file and reorganize as necessary to work with Composer
 	and Packagist.
 

@@ -40,6 +40,8 @@ class dConnection {
 
 	const CONCAT_LENGTH = 90; // Must match the length of the varchar field defined in the database.
 
+	const DEFAULT_CNXN_KEY = '__default__';
+
 	protected $mysqli;
 	protected $domain;
 	// Caches of executable statements and bound parameters.
@@ -68,7 +70,7 @@ class dConnection {
 	// Filtering fields.
 	private $filter = array();
 
-	static protected $shared_cnxn;
+	static protected $shared_cnxn = [];
 
 	//
 	// !Contructors and preparing the connection for reading or writing.
@@ -178,12 +180,14 @@ class dConnection {
 	// !Shared connection
 	//
 
-	static function sharedConnection() {
-		return self::$shared_cnxn;
+	static function sharedConnection($key=null) {
+		if (!$key) { $key = self::DEFAULT_CNXN_KEY; }
+		return self::$shared_cnxn[$key];
 	}
 
-	static function registerSharedConnection($cnxn) {
-		self::$shared_cnxn = $cnxn;
+	static function registerSharedConnection($cnxn, $key=null) {
+		if (!$key) { $key = self::DEFAULT_CNXN_KEY; }
+		self::$shared_cnxn[$key] = $cnxn;
 	}
 
 	//
