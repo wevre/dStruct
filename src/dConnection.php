@@ -76,11 +76,11 @@ class dConnection {
 	// !Contructors and preparing the connection for reading or writing.
 	//
 
-	function __construct($mysqli, $domain) {
+	function __construct($mysqli, $domain, $key=null) {
 		$this->mysqli = $mysqli;
 		$this->domain = $domain;
 		$this->fetchDefs();
-		self::registerSharedConnection($this);
+		self::registerSharedConnection($this, $key);
 	}
 
 	function __destruct() {
