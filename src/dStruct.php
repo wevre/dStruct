@@ -40,6 +40,10 @@ class dStruct {
 
 	static function createNew($values=[], $cnxnKey=null) {
 		$cnxn = dConnection::sharedConnection($cnxnKey);
+		return self::createNewWithConnection($cnxn, $values);
+	}
+
+	static function createNewWithConnection($cnxn, $values=[]) {
 		$cnxn->confirmTransaction('createNew');
 		$gname = get_called_class();
 		/*cnxn_error_log('creating new object of type ' . $gname);*/
