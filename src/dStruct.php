@@ -39,7 +39,7 @@ class dStruct {
 	protected $updateQueue;
 
 	static function createNew($values=[], $cnxnKey=null) {
-		$cnxn = dConnection::sharedConnection($cnxnKey);
+		$cnxn = dConnection::shared($cnxnKey);
 		return self::createNewWithConnection($cnxn, $values);
 	}
 

@@ -7,9 +7,9 @@ project : dStruct ToDo
 	and Packagist.
 
 [X] (2018-07-04) : Keyed shared connections
-	`sharedConnection()` can take a key and return a connection associated with a
-	key. Supplying no key uses "_default_". This solves BYT where we have two
-	connections alive at the same time.
+	`dsConnection::shared()` can take a key and return a connection associated
+	with a key. Supplying no key uses "_default_". This solves BYT where we have
+	two connections alive at the same time.
 
 [] (2018-03-07) : Define dberror page
 	Put a const in dConnection that is the script to show when we can't connect

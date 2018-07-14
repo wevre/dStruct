@@ -97,7 +97,7 @@ $path = \wCommon\getURLPath();
 $domain = $_GET[KEY_DOMAIN];
 $gname = $_GET[KEY_GNAME];
 $idee = $_GET[KEY_IDEE];
-$cnxn = dConnection::sharedConnection();
+$cnxn = dConnection::shared();
 $mysqli = $cnxn->getMysqli();
 
 do try {

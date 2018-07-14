@@ -70,7 +70,7 @@ class dConnection {
 	// Filtering fields.
 	private $filter = array();
 
-	static protected $shared_cnxn = [];
+	static protected $shared = [];
 
 	//
 	// !Contructors and preparing the connection for reading or writing.
@@ -80,7 +80,7 @@ class dConnection {
 		$this->mysqli = $mysqli;
 		$this->domain = $domain;
 		$this->fetchDefs();
-		self::registerSharedConnection($this, $key);
+		self::registerShared($this, $key);
 	}
 
 	function __destruct() {
@@ -180,14 +180,14 @@ class dConnection {
 	// !Shared connection
 	//
 
-	static function sharedConnection($key=null) {
+	static function shared($key=null) {
 		if (!$key) { $key = self::DEFAULT_CNXN_KEY; }
-		return self::$shared_cnxn[$key];
+		return self::$shared[$key];
 	}
 
-	static function registerSharedConnection($cnxn, $key=null) {
+	static function registerShared($cnxn, $key=null) {
 		if (!$key) { $key = self::DEFAULT_CNXN_KEY; }
-		self::$shared_cnxn[$key] = $cnxn;
+		self::$shared[$key] = $cnxn;
 	}
 
 	//
