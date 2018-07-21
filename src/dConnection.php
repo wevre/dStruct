@@ -376,10 +376,14 @@ class dConnection {
 		$code = $this->codeForFname($gname, $fname);
 		$table = $this->tableForCode($code);
 		$cKey = 'insert' . $table;
+		$isConcat = $struct->fnameIsConcat($fname);
 		if (is_array($value)) { $seq = 0; }
-		else if ($struct->fnameIsConcat($fname)) { $seq = self::SEQ_CONCAT; $value = str_split($value, self::CONCAT_LENGTH); }
+		else if ($isConcat) { $seq = self::SEQ_CONCAT; $value = str_split($value, self::CONCAT_LENGTH); }
 		else { $seq = self::SEQ_SINGLE; $value = (array)$value; }
 		foreach ($value as $item) {
+			if ($isConcat) {
+				$item = substr($item, 0, self::CONCAT_LENGTH);
+			}
 			$stmt = $this->getStatement($cKey, 'INSERT INTO tbl_' . $table . ' (domain, idee, code, seq, value) VALUES ( ?, ?, ?, ?, ? )', 'iiiis', array('domain'=>$this->domain, 'idee'=>$struct->idee, 'code'=>$code, 'seq'=>$seq, 'value'=>$item, ));
 			try {
 			if (!$stmt->execute()) { throw new \Exception("Execute Error: {$stmt->error}", $stmt->errno); }

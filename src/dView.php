@@ -91,13 +91,13 @@ function getStructValues($struct) {
 // !Display dStruct objects from the database.
 //
 
-//NOTE: This script expects the caller to set up the $cnxn global variables.
+//NOTE: This script expects the caller to set up $cnxnKey variable if needed.
 
 $path = \wCommon\getURLPath();
 $domain = $_GET[KEY_DOMAIN];
 $gname = $_GET[KEY_GNAME];
 $idee = $_GET[KEY_IDEE];
-$cnxn = dConnection::shared();
+$cnxn = dConnection::shared($cnxnKey);
 $mysqli = $cnxn->getMysqli();
 
 do try {

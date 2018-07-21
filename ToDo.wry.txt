@@ -2,6 +2,20 @@ project : dStruct ToDo
 	author : Mike Weaver
 	created : 2015-02-13
 
+[] (2018-07-16) : Oversize values
+	Newer version of MySQL gives error when a value is too large for column.
+	Older version just ignored and truncated. So we need to think about where we
+	put checks in for oversize values. Could happen in dStruct when values
+	are set. Or could happen in dConnection when SQL insert statement is
+	executed.
+
+	This affects `meta_keys`, `tbl_char03`, `tbl_concat`, and it cropped up in
+	BYT where I was storing an array of details in tbl_concat and one was too
+	long.
+
+	Another solution is to design better objects. For example, the approach at
+	BYT could be replaced with DCF's dsPropery objects.
+
 [X] (2018-07-09) : Composer integration
 	Add a `composer.json` file and reorganize as necessary to work with Composer
 	and Packagist.
