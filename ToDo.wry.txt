@@ -2,6 +2,13 @@ project : dStruct ToDo
 	author : Mike Weaver
 	created : 2015-02-13
 
+[] (2018-08-01) : Generators
+	I could return generators from `fetchStructsForGname`, `fetchValuesForFname`,
+	and `fetchKeyedStructs` in dConnection; and `structsFromRefArray`, and
+	`structsFromKeyArray` in dStruct. At call sites, mostly, these are fed into
+	`foreach` loops, but in cases where not, could use PHP's `iteratorToArray` to
+	convert into array.
+
 [] (2018-07-16) : Oversize values
 	Newer version of MySQL gives error when a value is too large for column.
 	Older version just ignored and truncated. So we need to think about where we
@@ -14,7 +21,7 @@ project : dStruct ToDo
 	long.
 
 	Another solution is to design better objects. For example, the approach at
-	BYT could be replaced with DCF's dsPropery objects.
+	BYT could be replaced with DCF's dsProperty objects.
 
 [X] (2018-07-09) : Composer integration
 	Add a `composer.json` file and reorganize as necessary to work with Composer
@@ -44,6 +51,14 @@ project : dStruct ToDo
 	help? Not sure. Would also have to sort tables when fetching a struct so they
 	occur in the same order. It wouldn't be too hard to implement, but I'm not
 	sure if we would ever see a result until next year's MWB deluge.
+
+	There are two places in dConnection where this comes into play. In method
+	`fetchDefs` we load up the $this->tables structure, so sort it by table name.
+	Secondly, in `confirmStruct` the same structure is updated, so sort it
+	afterwards again by table name.
+
+	In dStruct, the `commitStruct` logic runs by whatever fnames lives in the
+	insert/update/delete queues. Sort those by table name before processing.
 
 [] (2017-10-18) : Other databases
 	There are database systems that do what I created here in dStruct. (For

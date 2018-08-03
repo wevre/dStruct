@@ -18,7 +18,10 @@ namespace dStruct;
 // !Autoloader for dObjects (subclasses of dStruct).
 //
 
-spl_autoload_register(function ($class) { if ('ds' == substr($class, 0, 2)) { include $class . '.php'; } } );
+spl_autoload_register(function ($class) {
+	$substr = substr($class, 0, 2);
+	if ('ds'==$substr || 'dt'==$substr) { include $class . '.php'; }
+} );
 
 //
 // !Represents an object stored in the database.
@@ -27,6 +30,8 @@ spl_autoload_register(function ($class) { if ('ds' == substr($class, 0, 2)) { in
 class dStruct {
 
 	const KEY_IDEE = 'i';
+	const OWNS = 'owns';
+	const GNAME = 'gname';
 
 	public $cnxn;
 	public $idee;
@@ -37,6 +42,8 @@ class dStruct {
 	protected $insertQueue;
 	protected $deleteQueue;
 	protected $updateQueue;
+	static protected $fieldDefCache;
+	static protected $refDefCache;
 
 	static function createNew($values=[], $cnxnKey=null) {
 		$cnxn = dConnection::shared($cnxnKey);
@@ -83,30 +90,91 @@ class dStruct {
 	// !Field Definitions -- For subclasses to override.
 	//
 
-	/**
-	* Returns the fields defined by this object, mapping each fname to the field type (where field type matches the database table used to store the field.
-	* Example: return [ 'name'=>dConnection::dCONCAT, 'address'=>dConnection::dCONCAT, 'verified'=>dConnection::dBOOL, ];
-	* Subclasses should override this method to provide their distinct fields.
-	* In contrast to prior versions, this method is now static, and in combination with ::fieldDefs provides a mechanism for inheritance.
-	*/
-	static function selfFieldDefs() { return []; }
+	// ///
+	// 	Returns fields defined by this object, each mapped to a type (which is
+	// 	one of \dStruct\dConnection::d<TYPE> and matches the database table
+	// 	used to store the field.) For example, a sublcass might return
+	// 	```
+	// 		[ 'name'=>dConnection::dCONCAT, 'address'=>dConnection::dCONCAT, ]
+	// 	Subclasses do call parent, that will be handled by `fieldDefs`.
+	static protected function selfFieldDefs() { return []; }
 
+	// ///
+	// 	Returns fields defined by this object, its traits, and its parents (and
+	// 	their traits). Caches results for faster lookup.
 	static function fieldDefs() {
+		if (static::fieldDefCache) { return static::fieldDefCache; }
+		$defs = static::selfFieldDefs();
 		$gname = get_called_class();
-		if ($parent = get_parent_class($gname)) { return array_merge(static::selfFieldDefs(), $parent::fieldDefs()); }
-		else { return static::selfFieldDefs(); }
+		foreach (class_uses($gname) as $trait) {
+			if ('dt' != substr($trait, 0, 2)) { continue; }
+			$traitName = substr($trait, 2);
+			$callable = [ $gname, 'fieldDefs' . $traitName, ];
+			$defs = array_merge($defs, call_user_func($callable));
+		}
+		if ($parent = get_parent_class($gname)) {
+			$defs = array_merge($defs, $parent::fieldDefs());
+		}
+		static::fieldDefCache = $defs;
+		return $defs;
 	}
 
+	// ///
+	// 	Returns array defining ownership and gname for each ref pointed at by
+	// 	this class. For example, a subclass might return
+	// 	```
+	// 		[
+	// 			'user'=>[ static::OWNS=>false, static::GNAME=>'dsUser', ],
+	// 			'entries'=>[ static::OWNS=>true, static::GNAME=>'dsPosts', ],
+	// 		]
+	// 	Subclasses do not call parent, that will be handled by `refDefs`.
+	static protected function selfRefDefs() { return []; }
+
+	// ///
+	// 	Returns array defining ownership and gnames for each `ref` pointed at
+	// 	by this class, its traits, and its parents (and their traits). Caches
+	// 	results for faster lookup.
+	static protected function refDefs() {
+		if (static::refDefCache) {
+			return static::refDefCache[$fname][self::OWNS];
+		}
+		$defs = static::selfRefDefs();
+		$gname = get_called_class();
+		foreach (class_uses($gname) as $trait) {
+			if ('dt' != substr($trait, 0, 2)) { continue; }
+			$traitName = substr($trait, 2);
+			$callable = [ $gname, 'refDefs' . $traitName, ];
+			$defs = array_merge($defs, call_user_func($callable));
+		}
+		if ($parent = get_parent_class($gname)) {
+			$defs = array_merge($defs, $parent::refDefs());
+		}
+		static::refDefCache = $defs;
+		return static::refDefCache[$fname][self::OWNS];
+	}
+
+	// ///
+	// 	Returns `true` or `false` if `fname` is an owned ref of this class.
+	// 	Throws an exception if `fname` is unrecognized.
 	static function ownsRef($fname) {
-		// Return true if the called object "owns" the referenced object. Owned objects will be deleted along with the object.
-		// Subclasses need to return true or false if `fname` is one of their fields, otherwise call super which will throw this exception.
-		throw new \Exception('Invalid fname ' . $fname . ' called for ownsRef');
+		$refDefs = static::refDefs();
+		$owns = $refDefs[$fname][static::OWNS];
+		if ($owns === null) {
+			throw new \Exception("Invalid fname `$fname` called for ownsRef");
+		}
+		return $owns;
 	}
 
+	// ///
+	// 	Returns a `gname` for the ref pointed at by field `fname` of this
+	// 	class. Throws an exception if `fname` is unrecognized.
 	static function gnameForRef($fname) {
-		// Return the gname of the object pointed at in this object's ref field.
-		// Subclasses need to return a proper fname for recognized fields, and call super otherwise, which will throw an exception.
-		throw new \Exception('Invalid fname ' . $fname . ' called for gnameForRef');
+		$refDefs = static::refDefs();
+		$gname = $refDefs[$fname][static::GNAME];
+		if ($gname === null) {
+			throw new \Exception("Invalid fname `$fname` called for gnameForRef");
+		}
+		return $gname;
 	}
 
 	static function gnameForKey($fname) {
