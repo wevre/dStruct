@@ -86,18 +86,33 @@ class dStruct {
 
 	function __toString() { return get_class($this) . '(' . $this->idee . ')'; }
 
-	//
-	// !Field Definitions -- For subclasses to override.
+	// ///
+	// 	section : Field definitions.
 	//
 
 	// ///
 	// 	Returns fields defined by this object, each mapped to a type (which is
 	// 	one of \dStruct\dConnection::d<TYPE> and matches the database table
-	// 	used to store the field.) For example, a sublcass might return
+	// 	used to store the field). For example, a sublcass might return
 	// 	```
 	// 		[ 'name'=>dConnection::dCONCAT, 'address'=>dConnection::dCONCAT, ]
-	// 	Subclasses do call parent, that will be handled by `fieldDefs`.
+	// 	Subclasses do not call parent, that will be handled by `fieldDefs`.
 	static protected function selfFieldDefs() { return []; }
+
+	// ///
+	// 	Returns array defining ownership and gname for each ref pointed at by
+	// 	this class. For example, a subclass might return
+	// 	```
+	// 		[
+	// 			'user'=>[ static::OWNS=>false, static::GNAME=>'dsUser', ],
+	// 			'entries'=>[ static::OWNS=>true, static::GNAME=>'dsPosts', ],
+	// 		]
+	// 	Subclasses do not call parent, that will be handled by `refDefs`.
+	static protected function selfRefDefs() { return []; }
+
+	// ///
+	// 	section : Managing field and ref definitions
+	//
 
 	// ///
 	// 	Returns fields defined by this object, its traits, and its parents (and
@@ -118,17 +133,6 @@ class dStruct {
 		static::fieldDefCache = $defs;
 		return $defs;
 	}
-
-	// ///
-	// 	Returns array defining ownership and gname for each ref pointed at by
-	// 	this class. For example, a subclass might return
-	// 	```
-	// 		[
-	// 			'user'=>[ static::OWNS=>false, static::GNAME=>'dsUser', ],
-	// 			'entries'=>[ static::OWNS=>true, static::GNAME=>'dsPosts', ],
-	// 		]
-	// 	Subclasses do not call parent, that will be handled by `refDefs`.
-	static protected function selfRefDefs() { return []; }
 
 	// ///
 	// 	Returns array defining ownership and gnames for each `ref` pointed at
