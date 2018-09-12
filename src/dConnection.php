@@ -249,6 +249,7 @@ class dConnection {
 		$category = $this->categoryForGname($gname);
 		// Return from the internal cache if present.
 		if ($this->structCache[$category][$idee]) { return $this->structCache[$category][$idee]; }
+		if (!$gname) { throw new \Exception('Fetch error: gname is blank'); }
 		foreach ($this->tablesForGname($gname) as $table) {
 			if (is_null($filterKey = $this->getFilterKey($gname, $table))) { continue; }
 			$cKey = 'fetchIdee' . $table . $filterKey;

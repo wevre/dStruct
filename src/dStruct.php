@@ -97,7 +97,7 @@ class dStruct {
 	// 	```
 	// 		[ 'name'=>dConnection::dCONCAT, 'address'=>dConnection::dCONCAT, ]
 	// 	Subclasses do not call parent, that will be handled by `fieldDefs`.
-	static protected function selfFieldDefs() { return []; }
+	static protected function selfFieldDefs($childs=null) { return []; }
 
 	// ///
 	// 	Returns array defining ownership and gname for each ref pointed at by
@@ -108,7 +108,7 @@ class dStruct {
 	// 			'entries'=>[ static::OWNS=>true, static::GNAME=>'dsPosts', ],
 	// 		]
 	// 	Subclasses do not call parent, that will be handled by `refDefs`.
-	static protected function selfRefDefs() { return []; }
+	static protected function selfRefDefs($childs=null) { return []; }
 
 	// ///
 	// 	section : Managing field and ref definitions
@@ -117,20 +117,21 @@ class dStruct {
 	// ///
 	// 	Returns fields defined by this object, its traits, and its parents (and
 	// 	their traits). Caches results for faster lookup.
-	static function fieldDefs() {
+	static function fieldDefs($childs=null) {
 		$gname = get_called_class();
-		if (key_exists($gname, static::$fieldDefCache)) { return static::$fieldDefCache[$gname]; }
-		$defs = static::selfFieldDefs();
+		$key = $gname . ( $childs ? '::' . $childs : '' );
+		if (key_exists($key, static::$fieldDefCache)) { return static::$fieldDefCache[$key]; }
+		$defs = static::selfFieldDefs($key);
 		foreach (class_uses($gname) as $trait) {
 			if ('dt' != substr($trait, 0, 2)) { continue; }
 			$traitName = substr($trait, 2);
 			$callable = [ $gname, 'fieldDefs' . $traitName, ];
-			$defs = array_merge($defs, call_user_func($callable));
+			$defs = array_merge($defs, call_user_func($callable, $key));
 		}
 		if ($parent = get_parent_class($gname)) {
-			$defs = array_merge($defs, $parent::fieldDefs());
+			$defs = array_merge($defs, $parent::fieldDefs($key));
 		}
-		static::$fieldDefCache[$gname] = $defs;
+		static::$fieldDefCache[$key] = $defs;
 		return $defs;
 	}
 
@@ -138,20 +139,22 @@ class dStruct {
 	// 	Returns array defining ownership and gnames for each `ref` pointed at
 	// 	by this class, its traits, and its parents (and their traits). Caches
 	// 	results for faster lookup.
-	static protected function refDefs() {
+	static protected function refDefs($childs=null) {
 		$gname = get_called_class();
-		if (key_exists($gname, static::$refDefCache)) { return static::$refDefCache[$gname]; }
-		$defs = static::selfRefDefs();
+		$key = $gname . ( $childs ? '::' . $childs : '' );
+		error_log('refDefs key is ' . $key);
+		if (key_exists($key, static::$refDefCache)) { return static::$refDefCache[$key]; }
+		$defs = static::selfRefDefs($key);
 		foreach (class_uses($gname) as $trait) {
 			if ('dt' != substr($trait, 0, 2)) { continue; }
 			$traitName = substr($trait, 2);
 			$callable = [ $gname, 'refDefs' . $traitName, ];
-			$defs = array_merge($defs, call_user_func($callable));
+			$defs = array_merge($defs, call_user_func($callable, $key));
 		}
 		if ($parent = get_parent_class($gname)) {
-			$defs = array_merge($defs, $parent::refDefs());
+			$defs = array_merge($defs, $parent::refDefs($key));
 		}
-		static::$refDefCache[$gname] = $defs;
+		static::$refDefCache[$key] = $defs;
 		return $defs;
 	}
 
