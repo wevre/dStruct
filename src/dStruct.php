@@ -42,8 +42,8 @@ class dStruct {
 	protected $insertQueue;
 	protected $deleteQueue;
 	protected $updateQueue;
-	static protected $fieldDefCache;
-	static protected $refDefCache;
+	static protected $fieldDefCache = [];
+	static protected $refDefCache = [];
 
 	static function createNew($values=[], $cnxnKey=null) {
 		$cnxn = dConnection::shared($cnxnKey);
@@ -118,9 +118,9 @@ class dStruct {
 	// 	Returns fields defined by this object, its traits, and its parents (and
 	// 	their traits). Caches results for faster lookup.
 	static function fieldDefs() {
-		if (static::fieldDefCache) { return static::fieldDefCache; }
-		$defs = static::selfFieldDefs();
 		$gname = get_called_class();
+		if (key_exists($gname, static::$fieldDefCache)) { return static::$fieldDefCache[$gname]; }
+		$defs = static::selfFieldDefs();
 		foreach (class_uses($gname) as $trait) {
 			if ('dt' != substr($trait, 0, 2)) { continue; }
 			$traitName = substr($trait, 2);
@@ -130,7 +130,7 @@ class dStruct {
 		if ($parent = get_parent_class($gname)) {
 			$defs = array_merge($defs, $parent::fieldDefs());
 		}
-		static::fieldDefCache = $defs;
+		static::$fieldDefCache[$gname] = $defs;
 		return $defs;
 	}
 
@@ -139,11 +139,9 @@ class dStruct {
 	// 	by this class, its traits, and its parents (and their traits). Caches
 	// 	results for faster lookup.
 	static protected function refDefs() {
-		if (static::refDefCache) {
-			return static::refDefCache[$fname][self::OWNS];
-		}
-		$defs = static::selfRefDefs();
 		$gname = get_called_class();
+		if (key_exists($gname, static::$refDefCache)) { return static::$refDefCache[$gname]; }
+		$defs = static::selfRefDefs();
 		foreach (class_uses($gname) as $trait) {
 			if ('dt' != substr($trait, 0, 2)) { continue; }
 			$traitName = substr($trait, 2);
@@ -153,8 +151,8 @@ class dStruct {
 		if ($parent = get_parent_class($gname)) {
 			$defs = array_merge($defs, $parent::refDefs());
 		}
-		static::refDefCache = $defs;
-		return static::refDefCache[$fname][self::OWNS];
+		static::$refDefCache[$gname] = $defs;
+		return $defs;
 	}
 
 	// ///

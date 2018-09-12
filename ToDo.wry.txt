@@ -3,6 +3,7 @@ project : dStruct ToDo
 	created : 2015-02-13
 
 [] (2018-08-01) : Generators
+
 	I could return generators from `fetchStructsForGname`, `fetchValuesForFname`,
 	and `fetchKeyedStructs` in dConnection; and `structsFromRefArray`, and
 	`structsFromKeyArray` in dStruct. At call sites, mostly, these are fed into
@@ -10,6 +11,7 @@ project : dStruct ToDo
 	convert into array.
 
 [] (2018-07-16) : Oversize values
+
 	Newer version of MySQL gives error when a value is too large for column.
 	Older version just ignored and truncated. So we need to think about where we
 	put checks in for oversize values. Could happen in dStruct when values
@@ -23,26 +25,36 @@ project : dStruct ToDo
 	Another solution is to design better objects. For example, the approach at
 	BYT could be replaced with DCF's dsProperty objects.
 
+	This happened in BYT with an array of strings. Single strings can wrap if
+	longer than 90, but we didn't create a mechanism for arrays of strings to do
+	that. But we could. Some marker, for example, could sit at the end of the
+	string to indicate that it wraps to the next SEQ.
+
 [X] (2018-07-09) : Composer integration
+
 	Add a `composer.json` file and reorganize as necessary to work with Composer
 	and Packagist.
 
 [X] (2018-07-04) : Keyed shared connections
+
 	`dsConnection::shared()` can take a key and return a connection associated
 	with a key. Supplying no key uses "_default_". This solves BYT where we have
 	two connections alive at the same time.
 
 [] (2018-03-07) : Define dberror page
+
 	Put a const in dConnection that is the script to show when we can't connect
 	to the database. It's /dberror for most of our installations.
 
 [] (2018-03-03) : Schema-less design
+
 	I want to explore a schema-less design. So take away the `selfFieldDefs`
 	method and an object just stuffs everything into the database as keyed
 	fields. Maybe the list of field names is needed, but the field type is not.
 	So every item in the db is a generic object with arbitrary fields.
 
 [] (2017-11-16) : Deadlocks
+
 	I'm not 100% certain about this, but it seems like deadlocks occur in mysql
 	when locks are acquired in different orders. And locks are based on which
 	tables you are opening. So it might be wise to order our
@@ -61,30 +73,36 @@ project : dStruct ToDo
 	insert/update/delete queues. Sort those by table name before processing.
 
 [] (2017-10-18) : Other databases
+
 	There are database systems that do what I created here in dStruct. (For
 	example, Amazon's DynamoDB.) Perhaps instead of worrying about improvements
 	and new features, I spend time learning how those systems work, and migrating
 	to them.
 
 [] (2016-09-17) : Unrecognized fields
+
 	The __set function could ignore any field that isn’t part of
 	dStructFieldDefs. That would prevent us from trying to stuff something
 	unrecognized in the database.
 
 [] (2016-09-01) : Domain creation
+
 	Setting up a new database does not set up new domains. Need something for
 	setting up domains. Even a simple function that could be called to create a
 	domain and return the integer.
 
 [] (2016-08-31) : Meta table for deleted idees
+
 	Create a meta table that keeps track of idee’s of deleted structs. Then when
 	a new struct is created, it can recycle old idee’s.
 
 [] (2016-08-31) : Unused fields audit
+
 	Create an audit that checks for fields defined in the database that are no
 	longer reported as fields for an object (sort of the opposite of what we are
 	doing now in dConnection::confirmStruct) and remove them.
 
 [] (2015-09-15) : Manage error messages
+
 	Give users of the library a way to turn error messages on and off. Such as a
 	flag on dStruct and dConnection that can be set by the caller.
