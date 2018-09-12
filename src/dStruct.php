@@ -142,7 +142,6 @@ class dStruct {
 	static protected function refDefs($childs=null) {
 		$gname = get_called_class();
 		$key = $gname . ( $childs ? '::' . $childs : '' );
-		error_log('refDefs key is ' . $key);
 		if (key_exists($key, static::$refDefCache)) { return static::$refDefCache[$key]; }
 		$defs = static::selfRefDefs($key);
 		foreach (class_uses($gname) as $trait) {
