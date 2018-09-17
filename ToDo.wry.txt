@@ -72,6 +72,27 @@ project : dStruct ToDo
 	In dStruct, the `commitStruct` logic runs by whatever fnames lives in the
 	insert/update/delete queues. Sort those by table name before processing.
 
+	2018-09-17 I think there are two main things to do: (1) make sure tables are
+	sorted in dConnection's $this->tables[$gname], which will then affect
+	`fetchStructForIdee` and `deleteStructWithIdee`. That table is built/edited
+	in `fetchDefs` and again in `confirmStruct`.
+
+	The other thing to do is (2) insert/update/delete fields in the proper table
+	order. I think it will be okay to mix up the order of
+	inserts/updates/deletes, it is the order of fields/tables that is more
+	important. Changing a field on an object results in only one of these three
+	actions, so I don't think we have to do, for example, all the inserts first.
+
+	So I've implemented #2 by merging all the ins/upd/del actions into a single
+	array of "action" items that store the field, and the table, and an action.
+	Then I can sort by table and then step through and execute whatever action.
+
+	So that make me think, why don't I just do it that way from the start?
+	Instead of having three queues, let's just one queue of actions, and work
+	with that. It might be easiest if the actions array is keyed by fname. This
+	should work because a changed field only exists in one of those queues at a
+	time, so no need, really to have three of them.
+
 [] (2017-10-18) : Other databases
 
 	There are database systems that do what I created here in dStruct. (For

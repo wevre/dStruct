@@ -115,6 +115,12 @@ class dConnection {
 				$this->gnames[$category] = $gname;
 			}
 		}
+		// Sort the tables stored for each gname.
+		foreach (array_keys($this->tables) as $key) {
+			// $this->tables stores codes and gnames; bailout if not string.
+			if (!is_string($key)) { continue; }
+			sort($this->tables[$key]);
+		}
 		$result->close();
 	}
 
@@ -212,13 +218,20 @@ class dConnection {
 
 	function tablesForGname($gname) { return $this->tables[$gname]; }
 
+	function tableForFname($gname, $fname) {
+		$code = $this->codeForFname($gname, $fname);
+		return $this->tableForCode($code);
+	}
+
 	function gnames() { return $this->gnames; }
 
 	//
 	// !Utility for setting up and binding preparing statements.
 	//
 
-	// Prepares and caches a statement if it doesn't exist, binding parameters to elements within the $paramCache array, then sets values in the $paramCache array and returns the statement ready to execute.
+	// Prepares and caches a statement if it doesn't exist, binding parameters to
+	// elements within the $paramCache array, then sets values in the $paramCache
+	// array and returns the statement ready to execute.
 	function getStatement($cKey, $sqlCallback, $types, $params) {
 		// Lazily prepare and cache the statement.
 		if (!$this->stmtCache[$cKey]) {
@@ -499,6 +512,7 @@ class dConnection {
 		}
 		// Confirm that all the fields have a code.
 		$fieldDefs = $gname::fieldDefs();
+		$needsSort = []; // Keep track of gnames where we add tables.
 		foreach ($fieldDefs as $fname=>$table) {
 			if (!($code = $this->codeForFname($gname, $fname, true))) {
 				$code = $this->getNextCode();
@@ -511,8 +525,15 @@ class dConnection {
 				$this->codes[$gname][$fname] = $code;
 				$this->fnames[$code] = $fname;
 				$this->tables[$code] = $table;
-				if (!in_array($table, (array)$this->tables[$gname])) { $this->tables[$gname][] = $table; }
+				// Keep a list of $gnames that had a table added, and then sort them all at the end.
+				if (!in_array($table, (array)$this->tables[$gname])) {
+					$this->tables[$gname][] = $table;
+					$needsSort[] = $gname; // Track this gname so we can sort.
+				}
 			}
+			// Sort any gnames where we added tables.
+			$needsSort = array_unique($needsSort);
+			foreach ($needsSort as $gname) { sort($this->tables[$gname]); }
 			if ($table != $this->tableForCode($this->codeForFname($gname, $fname))) { throw new \Exception("Invalid: for gname [{$gname}], table returned by object [{$table}] does not match table stored in database [" . $this->tableForCode($this->codeForFname($gname, $fname)) . '].'); }
 		}
 		// Confirm that the struct has an idee.
@@ -595,7 +616,11 @@ class dConnection {
 	}
 
 	function getFilterKey($gname, $table) {
-		// Return a key that will be appended to the normal $cKey and used to cache the statement. This method will be called for every table holding the fields of the struct, but if no filtered fields are in the requested table, it returns null. If there is no filter in place, returns a blank string so $cKey will be unaffected
+		// Return a key that will be appended to the normal $cKey and used to
+		// cache the statement. This method will be called for every table holding
+		// the fields of the struct, but if no filtered fields are in the
+		// requested table, it returns null. If there is no filter in place,
+		// returns a blank string so $cKey will be unaffected
 		if ($this->filter[$gname]) {
 			if ($this->filter[$gname][$table]) { return '-_filter_-' . $gname; }
 			else { return null; } // Skip this table because none of the filtered fields are in it.
@@ -605,7 +630,11 @@ class dConnection {
 	}
 
 	function getFilterSQL($gname, $table) {
-		// Return a snippet of SQL code that will limit codes to those in the filtered list. This method will be called for every table holding the fields of the struct, but if no filtered fields are in the requested table, it returns null. If there is no filter in place, return a blank string so the original SQL will be unaffected.
+		// Return a snippet of SQL code that will limit codes to those in the
+		// filtered list. This method will be called for every table holding the
+		// fields of the struct, but if no filtered fields are in the requested
+		// table, it returns null. If there is no filter in place, return a blank
+		// string so the original SQL will be unaffected.
 		if ($this->filter[$gname]) {
 			if ($this->filter[$gname][$table]) { return ' AND t.code IN (' . implode(', ', $this->filter[$gname][$table]) . ')'; }
 			else { return null; } // Skip this table because none of the filtered fields are in it.

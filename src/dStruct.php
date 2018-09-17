@@ -84,7 +84,10 @@ class dStruct {
 
 	function nullify() { foreach (array_keys($this->values) as $fname) { $this->__set($fname, null); } }
 
-	function __toString() { return get_class($this) . '(' . $this->idee . ')'; }
+	function __toString() {
+		$key = $this->getKey();
+		return get_class($this) . '(' . $this->idee . ( $key ? ':' . $key : '' ) . ')';
+	}
 
 	// ///
 	// 	section : Field definitions.
@@ -278,13 +281,45 @@ class dStruct {
 	// !Commit queued transactions.
 	//
 
+	function getActions($queue, $action, $gname) {
+		$actions = [];
+		foreach ((array)$queue as $fname=>$test) {
+			if (!$test) { continue; } // ??? When is this ever false?
+			$actions[] = [
+				'action'=>$action,
+				'fname'=>$fname,
+				'table'=>$this->cnxn->tableForFname($gname, $fname),
+			];
+		}
+		return $actions;
+	}
+
 	function commitStruct() {
 		$this->cnxn->confirmTransaction('commitStruct');
 		$this->cnxn->confirmStruct($this); // Confirm we have category, codes, and idee assigned.
-		/*cnxn_error_log("committing $this");*/
-		foreach ((array)$this->insertQueue as $fname=>$test) { if ($test) { $this->cnxn->insertField($this, $fname, $this->values[$fname]); } }
-		foreach ((array)$this->updateQueue as $fname=>$test) { if ($test) { $this->cnxn->updateField($this, $fname, $this->values[$fname]); } }
-		foreach ((array)$this->deleteQueue as $fname=>$test) { if ($test) { $this->cnxn->deleteField($this, $fname); } }
+		$gname = get_class($this);
+		// Create a table of combined "actions" that merges inserts, updates, and
+		// deletes and lets us sort the results by table.
+		$actions = [];
+		$actions = array_merge($actions, $this->getActions($this->insertQueue, '1-INS', $gname));
+		$actions = array_merge($actions, $this->getActions($this->updateQueue, '2-UPD', $gname));
+		$actions = array_merge($actions, $this->getActions($this->deleteQueue, '3-DEL', $gname));
+		usort($actions, function($a, $b) {
+			$result = strcmp($a['table'], $b['table']) or strcmp($a['fname'], $b['fname']);
+			return $result;
+		});
+		foreach ($actions as $info) {
+			$action = $info['action'];
+			$fname = $info['fname'];
+			error_log('action ' . $action . ' for fname ' . $fname . ' in table ' . $info['table']);
+			if ('1-INS' == $action) {
+				$this->cnxn->insertField($this, $fname, $this->values[$fname]);
+			} else if ('2-UPD' == $action) {
+				$this->cnxn->updateField($this, $fname, $this->values[$fname]);
+			} else if ('3-DEL' == $action) {
+				$this->cnxn->deleteField($this, $fname);
+			}
+		}
 		// Clear out the queues and original values. Note: We don't use unset() here on object properties, or they behave strangely afterward.
 		$this->insertQueue = null;
 		$this->deleteQueue = null;
