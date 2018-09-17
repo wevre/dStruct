@@ -322,7 +322,6 @@ class dStruct {
 		});
 		foreach ($this->actionQueue as $fname=>$info) {
 			$action = $info['action'];
-			error_log('action ' . $action . ' for fname ' . $fname . ' in table ' . $info['table']);
 			if (self::INSERT == $action) {
 				$this->cnxn->insertField($this, $fname, $this->values[$fname]);
 			} else if (self::UPDATE == $action) {
