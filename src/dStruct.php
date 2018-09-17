@@ -33,15 +33,18 @@ class dStruct {
 	const OWNS = 'owns';
 	const GNAME = 'gname';
 
+	// Actions
+	const INSERT = '1-INS';
+	const UPDATE = '2-UPD';
+	const DELETE = '3-DEL';
+
 	public $cnxn;
 	public $idee;
 	public $key;
 	// Pools of fields that need to be modified at next commit.
 	protected $values;
 	protected $origValues;
-	protected $insertQueue;
-	protected $deleteQueue;
-	protected $updateQueue;
+	protected $actionQueue = [];
 	static protected $fieldDefCache = [];
 	static protected $refDefCache = [];
 
@@ -239,91 +242,97 @@ class dStruct {
 		return $this->values[$fname];
 	}
 
-/**
-* This override allows the dStruct object to capture 'set' actions on a field and record it for later syncing with the backing store. This means a user of a dstruct object can call
-* $myStruct->someProperty = 'hello'
-* and the new value of `someProperty` will be queued up for insert into the database.
-* This works for setting scalars and arrays, but it will not work to append to arrays. In other words, one can't make this call:
-* $myStruct->otherPropArray[] = $value;
-*/
+	// This override allows the dStruct object to capture 'set' actions on a
+	// field and record it for later syncing with the backing store. This means a
+	// user of a dstruct object can call `$myStruct->someProperty = 'hello'` and
+	// the new value of `someProperty` will be queued up for insert into the
+	// database. This works for setting scalars and arrays, but it will not work
+	// to append to arrays. In other words, one can't make this call:
+	// `$myStruct->otherPropArray[] = $value;`. For that, modify the original
+	// array and then set the field to the new, modified array.
 	function __set($fname, $value) {
 		$this->cnxn->confirmTransaction('__set');
 		// Determine the original value (since last commit).
-		if (!array_key_exists($fname, (array)$this->origValues)) { $this->origValues[$fname] = $this->values[$fname]; }
+		if (!array_key_exists($fname, (array)$this->origValues)) {
+			$this->origValues[$fname] = $this->values[$fname];
+		}
 		$origValue = $this->origValues[$fname];
 		// Check for zombies.
-		if (!is_null($this->values[$fname]) && $this->fnameIsRef($fname) && $this->ownsRef($fname)) { // Test here is: are we about to blow away an owned ref and leave it stranded as a zombie in the database?.
-			if ($this->cnxn->inZombieMode()) { zombie_error_log("dStruct::__set: pushing zombies for {$this}->{$fname}"); foreach ((array)$this->structsFromRefArray($fname) as $struct) { $this->cnxn->pushZombie($struct); } }
-			else if ($this->cnxn->shouldWarnZombie()) { throw new \Exception("ZOMBIE fatal: {$this}->{$fname} being set to " . ( $value ? $value : 'null' ) . " is an owned reference to {$this->gnameForRef($fname)}."); }
+		if (!is_null($this->values[$fname])
+		&& $this->fnameIsRef($fname)
+		&& $this->ownsRef($fname)) {
+			// Test here is: are we about to blow away an owned ref and leave it
+			// stranded as a zombie in the database?
+			if ($this->cnxn->inZombieMode()) {
+				zombie_error_log('dStruct::__set: pushing zombies for '
+				. "{$this}->{$fname}");
+				foreach ((array)$this->structsFromRefArray($fname) as $struct) {
+					$this->cnxn->pushZombie($struct);
+				}
+			} else if ($this->cnxn->shouldWarnZombie()) {
+				throw new \Exception("ZOMBIE fatal: {$this}->{$fname} being set to "
+				. ( $value ? $value : 'null' )
+				. " is an owned reference to {$this->gnameForRef($fname)}.");
+			}
 		}
 		// Determine what action to take based on old and new value.
-		unset($this->insertQueue[$fname]);
-		unset($this->updateQueue[$fname]);
-		unset($this->deleteQueue[$fname]);
-		if (is_null($origValue) && !is_null($value)) { $this->insertQueue[$fname] = true; $msg = 'INSERT'; }
-		else if (!is_null($origValue) && is_null($value)) { $this->deleteQueue[$fname] = true; $msg = 'DELETE'; }
-		else if ($origValue != $value) { $this->updateQueue[$fname] = true; $msg = 'UPDATE'; }
-		else { $msg = 'NO CHANGE'; }
+		$action = null;
+		if (is_null($origValue) && !is_null($value)) { $action = self::INSERT; }
+		else if (!is_null($origValue) && is_null($value)) { $action = self::DELETE; }
+		else if ($origValue != $value) { $action = self::UPDATE; }
+		else { unset($this->actionQueue[$fname]); }
+		if ($action) {
+			if (!array_key_exists($fname, $this->actionQueue)) {
+				$gname = get_class($this);
+				$table = $this->cnxn->tableForFname($gname, $fname);
+				$this->actionQueue[$fname]['table'] = $table;
+			}
+			$this->actionQueue[$fname]['action'] = $action;
+		}
 		// Queue this struct up for autocommit.
 		$this->cnxn->queueForCommit($this);
 		// Set the value.
 		$this->values[$fname] = $value;
-		/*cnxn_error_log("{$this}->$fname <= [" . ( is_null($value) ? 'NULL' : $value ) . '] was [' . ( is_null($origValue) ? 'NULL' : $origValue ) . '] :: ' . $msg);*/
 	}
 
 	function __isset($fname) { return array_key_exists($fname, $this->values); }
 
 	function getValues() { return $this->values; }
 
-	function rollback() { foreach ((array)$this->origValues as $fname=>$value) { $this->values[$fname] = $value; } } // Restore fields to their original values in case of a database ROLLBACK.
+	function rollback() {
+		// Restore fields to their original values in case of a database ROLLBACK.
+		foreach ((array)$this->origValues as $fname=>$value) {
+			$this->values[$fname] = $value;
+		}
+	}
 
 	//
 	// !Commit queued transactions.
 	//
 
-	function getActions($queue, $action, $gname) {
-		$actions = [];
-		foreach ((array)$queue as $fname=>$test) {
-			if (!$test) { continue; } // ??? When is this ever false?
-			$actions[] = [
-				'action'=>$action,
-				'fname'=>$fname,
-				'table'=>$this->cnxn->tableForFname($gname, $fname),
-			];
-		}
-		return $actions;
-	}
-
 	function commitStruct() {
 		$this->cnxn->confirmTransaction('commitStruct');
 		$this->cnxn->confirmStruct($this); // Confirm we have category, codes, and idee assigned.
-		$gname = get_class($this);
 		// Create a table of combined "actions" that merges inserts, updates, and
 		// deletes and lets us sort the results by table.
-		$actions = [];
-		$actions = array_merge($actions, $this->getActions($this->insertQueue, '1-INS', $gname));
-		$actions = array_merge($actions, $this->getActions($this->updateQueue, '2-UPD', $gname));
-		$actions = array_merge($actions, $this->getActions($this->deleteQueue, '3-DEL', $gname));
-		usort($actions, function($a, $b) {
-			$result = strcmp($a['table'], $b['table']) or strcmp($a['fname'], $b['fname']);
+		uasort($this->actionQueue, function($a, $b) {
+			$result = strcmp($a['table'], $b['table'])
+			or $result = strcmp($a['action'], $b['action']);
 			return $result;
 		});
-		foreach ($actions as $info) {
+		foreach ($this->actionQueue as $fname=>$info) {
 			$action = $info['action'];
-			$fname = $info['fname'];
 			error_log('action ' . $action . ' for fname ' . $fname . ' in table ' . $info['table']);
-			if ('1-INS' == $action) {
+			if (self::INSERT == $action) {
 				$this->cnxn->insertField($this, $fname, $this->values[$fname]);
-			} else if ('2-UPD' == $action) {
+			} else if (self::UPDATE == $action) {
 				$this->cnxn->updateField($this, $fname, $this->values[$fname]);
-			} else if ('3-DEL' == $action) {
+			} else if (self::DELETE == $action) {
 				$this->cnxn->deleteField($this, $fname);
 			}
 		}
 		// Clear out the queues and original values. Note: We don't use unset() here on object properties, or they behave strangely afterward.
-		$this->insertQueue = null;
-		$this->deleteQueue = null;
-		$this->updateQueue = null;
+		$this->actionQueue = [];
 		$this->origValues = null;
 	}
 

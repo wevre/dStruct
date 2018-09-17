@@ -53,7 +53,7 @@ project : dStruct ToDo
 	fields. Maybe the list of field names is needed, but the field type is not.
 	So every item in the db is a generic object with arbitrary fields.
 
-[] (2017-11-16) : Deadlocks
+[] (2017-11-16) : Sort by table
 
 	I'm not 100% certain about this, but it seems like deadlocks occur in mysql
 	when locks are acquired in different orders. And locks are based on which
@@ -83,7 +83,7 @@ project : dStruct ToDo
 	important. Changing a field on an object results in only one of these three
 	actions, so I don't think we have to do, for example, all the inserts first.
 
-	So I've implemented #2 by merging all the ins/upd/del actions into a single
+	I've implemented #2 by merging all the ins/upd/del actions into a single
 	array of "action" items that store the field, and the table, and an action.
 	Then I can sort by table and then step through and execute whatever action.
 
