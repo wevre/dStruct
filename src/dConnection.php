@@ -45,14 +45,14 @@ class dConnection {
 	protected $mysqli;
 	protected $domain;
 	// Caches of executable statements and bound parameters.
-	protected $stmtCache = array();
-	protected $paramCache = array();
+	protected $stmtCache = [];
+	protected $paramCache = [];
 	// For cross referencing fnames and codes and tables and categories.
-	private $codes; // gname+fname => code
-	private $fnames; // code => fname
-	private $tables; // code => table, also gname=>array of tables used for this gname
-	private $categories; // gname => category
-	private $gnames; // category => gname
+	private $codes = []; // gname+fname => code
+	private $fnames = []; // code => fname
+	private $tables = []; // code => table, also gname=>array of tables used for this gname
+	private $categories = []; // gname => category
+	private $gnames = []; // category => gname
 	// Max values.
 	private $lastCategory;
 	private $lastCode;
