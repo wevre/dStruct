@@ -2,128 +2,196 @@ project : dStruct ToDo
 	author : Mike Weaver
 	created : 2015-02-13
 
-[] (2018-08-01) : Generators
+section : Versions
 
-	I could return generators from `fetchStructsForGname`, `fetchValuesForFname`,
-	and `fetchKeyedStructs` in dConnection; and `structsFromRefArray`, and
-	`structsFromKeyArray` in dStruct. At call sites, mostly, these are fed into
-	`foreach` loops, but in cases where not, could use PHP's `iteratorToArray` to
-	convert into array.
+	Can we create an object that acts like a pointer? The connection retrieves
+	it, but then goes one level of indirection to retrieve the "pointed to"
+	object and returns that transparently to the outside? I think for this to
+	work we would need to hijack the ->idee method at a minimum.
 
-[] (2018-07-16) : Oversize values
+	Obviously there is only one pointer, but it can point at any object (haha,
+	including another pointer?). So all the functionality only has to be coded on
+	the pointer object. And maybe some hooks in dConnection?
 
-	Newer version of MySQL gives error when a value is too large for column.
-	Older version just ignored and truncated. So we need to think about where we
-	put checks in for oversize values. Could happen in dStruct when values
-	are set. Or could happen in dConnection when SQL insert statement is
-	executed.
+	Would the pointer return an object and swizzle the idee so that all future
+	interaction with that object would have to go through the pointer first?
 
-	This affects `meta_keys`, `tbl_char03`, `tbl_concat`, and it cropped up in
-	BYT where I was storing an array of details in tbl_concat and one was too
-	long.
+	When changes occur on the pointee, the pointer would create a new draft
+	object with the changes, and would wait for a commit command to roll those
+	draft changes into the new head object.
 
-	Another solution is to design better objects. For example, the approach at
-	BYT could be replaced with DCF's dsProperty objects.
+	The original object can't be changed anyway, so it's okay for the idee to be
+	stolen/replaced.
 
-	This happened in BYT with an array of strings. Single strings can wrap if
-	longer than 90, but we didn't create a mechanism for arrays of strings to do
-	that. But we could. Some marker, for example, could sit at the end of the
-	string to indicate that it wraps to the next SEQ.
+	Maybe the pointer can store "in draft" changes. It can allow for
+	add/edit/delete fields just like any other object. It can list out its fields
+	by borrowing from its pointee. A `commit` on the pointer will actually create
+	the new object and roll the history. When it is retrieved from the database,
+	if there are no draft changes, it can just adopt all the fields of the head.
+	A commit will mark it as a draft. If we retrieve the object as read only,
+	then we want the head. If we retrieve for write, then we want to include any
+	draft changes, so if those exist we should keep those and not override with
+	head.
 
-[] (2018-03-07) : Define dberror page
+	So higher objects would hold a ref to a pointer. They would create a pointer,
+	tell it to manage some type of dsObject and could, for the most part,
+	interact with it as if it were the object itself. Maybe the pointer object
+	would need special methods for carrying out pointer management actions.
 
-	Put a const in dConnection that is the script to show when we can't connect
-	to the database. It's /dberror for most of our installations.
+	How does the pointer interact with the versions in:
 
-[] (2018-03-03) : Schema-less design
+	object creation
 
-	I want to explore a schema-less design. So take away the `selfFieldDefs`
-	method and an object just stuffs everything into the database as keyed
-	fields. Maybe the list of field names is needed, but the field type is not.
-	So every item in the db is a generic object with arbitrary fields.
+		The pointer needs to be created and the first object which will start out
+		as a draft (and no head exists yet). It seems like we want to be able to
+		make a call like `dsPage::createNew(...)` and have the pointer or the
+		connection intercept and build everything.
 
-[] (2017-10-18) : Other databases
+	setting fields
 
-	There are database systems that do what I created here in dStruct. (For
-	example, Amazon's DynamoDB.) Perhaps instead of worrying about improvements
-	and new features, I spend time learning how those systems work, and migrating
-	to them.
+		When a change occurs on a pointer, it creates a new version as a copy, and
+		executes the changes on that object instead. This is the new "draft" and
+		we need an API to show that draft instead of the most recently commited
+		object. Also need an API to commit the draft as new head.
 
-[] (2016-09-17) : Unrecognized fields
+	object deletion
 
-	The __set function could ignore any field that isn’t part of
-	dStructFieldDefs. That would prevent us from trying to stuff something
-	unrecognized in the database.
+		Not sure you would ever delete an object. Or when it is deleted the entire
+		history is also deleted. This is like version control at the level of the
+		object, so the object is the repository. Deleting an object is like
+		deleting the entire repository.
 
-[] (2016-09-01) : Domain creation
+	listing objects
 
-	Setting up a new database does not set up new domains. Need something for
-	setting up domains. Even a simple function that could be called to create a
-	domain and return the integer.
+		When we do something like: list objects, or even structFromRefField we
+		need to be ready to have empty (just created and still in draft) object be
+		returned. We need an API for listing versions. Maybe a `ver` key that can
+		identify a specific version.
 
-[] (2016-08-31) : Meta table for deleted idees
+section : To do
 
-	Create a meta table that keeps track of idee’s of deleted structs. Then when
-	a new struct is created, it can recycle old idee’s.
+	[] (2018-08-01) : Generators
 
-[] (2016-08-31) : Unused fields audit
+		I could return generators from `fetchStructsForGname`,
+		`fetchValuesForFname`, and `fetchKeyedStructs` in dConnection; and
+		`structsFromRefArray`, and `structsFromKeyArray` in dStruct. At call
+		sites, mostly, these are fed into `foreach` loops, but in cases where not,
+		could use PHP's `iteratorToArray` to convert into array.
 
-	Create an audit that checks for fields defined in the database that are no
-	longer reported as fields for an object (sort of the opposite of what we are
-	doing now in dConnection::confirmStruct) and remove them.
+	[] (2018-07-16) : Oversize values
 
-[] (2015-09-15) : Manage error messages
+		Newer version of MySQL gives error when a value is too large for column.
+		Older version just ignored and truncated. So we need to think about where
+		we put checks in for oversize values. Could happen in dStruct when values
+		are set. Or could happen in dConnection when SQL insert statement is
+		executed.
 
-	Give users of the library a way to turn error messages on and off. Such as a
-	flag on dStruct and dConnection that can be set by the caller.
+		This affects `meta_keys`, `tbl_char03`, `tbl_concat`, and it cropped up in
+		BYT where I was storing an array of details in tbl_concat and one was too
+		long.
 
-[X] (2018-07-09) : Composer integration
+		Another solution is to design better objects. For example, the approach at
+		BYT could be replaced with DCF's dsProperty objects.
 
-	Add a `composer.json` file and reorganize as necessary to work with Composer
-	and Packagist.
+		This happened in BYT with an array of strings. Single strings can wrap if
+		longer than 90, but we didn't create a mechanism for arrays of strings to
+		do that. But we could. Some marker, for example, could sit at the end of
+		the string to indicate that it wraps to the next SEQ.
 
-[X] (2018-07-04) : Keyed shared connections
+	[] (2018-03-03) : Schema-less design
 
-	`dsConnection::shared()` can take a key and return a connection associated
-	with a key. Supplying no key uses "_default_". This solves BYT where we have
-	two connections alive at the same time.
+		I want to explore a schema-less design. So take away the `selfFieldDefs`
+		method and an object just stuffs everything into the database as keyed
+		fields. Maybe the list of field names is needed, but the field type is
+		not. So every item in the db is a generic object with arbitrary fields.
 
-[X] (2017-11-16) : Sort by table
+	[] (2017-10-18) : Other databases
 
-	I'm not 100% certain about this, but it seems like deadlocks occur in mysql
-	when locks are acquired in different orders. And locks are based on which
-	tables you are opening. So it might be wise to order our
-	inserts/updates/deletes when we are committing a struct based on the table.
-	Maybe even just sorting the updates based on alphabetical table name would
-	help? Not sure. Would also have to sort tables when fetching a struct so they
-	occur in the same order. It wouldn't be too hard to implement, but I'm not
-	sure if we would ever see a result until next year's MWB deluge.
+		There are database systems that do what I created here in dStruct. (For
+		example, Amazon's DynamoDB.) Perhaps instead of worrying about
+		improvements and new features, I spend time learning how those systems
+		work, and migrating to them.
 
-	There are two places in dConnection where this comes into play. In method
-	`fetchDefs` we load up the $this->tables structure, so sort it by table name.
-	Secondly, in `confirmStruct` the same structure is updated, so sort it
-	afterwards again by table name.
+	[] (2016-09-17) : Unrecognized fields
 
-	In dStruct, the `commitStruct` logic runs by whatever fnames lives in the
-	insert/update/delete queues. Sort those by table name before processing.
+		The __set function could ignore any field that isn’t part of
+		dStructFieldDefs. That would prevent us from trying to stuff something
+		unrecognized in the database.
 
-	2018-09-17 I think there are two main things to do: (1) make sure tables are
-	sorted in dConnection's $this->tables[$gname], which will then affect
-	`fetchStructForIdee` and `deleteStructWithIdee`. That table is built/edited
-	in `fetchDefs` and again in `confirmStruct`.
+	[] (2016-09-01) : Domain creation
 
-	The other thing to do is (2) insert/update/delete fields in the proper table
-	order. I think it will be okay to mix up the order of
-	inserts/updates/deletes, it is the order of fields/tables that is more
-	important. Changing a field on an object results in only one of these three
-	actions, so I don't think we have to do, for example, all the inserts first.
+		Setting up a new database does not set up new domains. Need something for
+		setting up domains. Even a simple function that could be called to create
+		a domain and return the integer.
 
-	I've implemented #2 by merging all the ins/upd/del actions into a single
-	array of "action" items that store the field, and the table, and an action.
-	Then I can sort by table and then step through and execute whatever action.
+	[] (2016-08-31) : Meta table for deleted idees
 
-	So that make me think, why don't I just do it that way from the start?
-	Instead of having three queues, let's just one queue of actions, and work
-	with that. It might be easiest if the actions array is keyed by fname. This
-	should work because a changed field only exists in one of those queues at a
-	time, so no need, really to have three of them.
+		Create a meta table that keeps track of idee’s of deleted structs. Then
+		when a new struct is created, it can recycle old idee’s.
+
+	[] (2016-08-31) : Unused fields audit
+
+		Create an audit that checks for fields defined in the database that are no
+		longer reported as fields for an object (sort of the opposite of what we
+		are doing now in dConnection::confirmStruct) and remove them.
+
+	[] (2015-09-15) : Manage error messages
+
+		Give users of the library a way to turn error messages on and off. Such as
+		a flag on dStruct and dConnection that can be set by the caller.
+
+	[X] (2018-07-09) : Composer integration
+
+		Add a `composer.json` file and reorganize as necessary to work with
+		Composer and Packagist.
+
+section : Done
+
+	[X] (2018-07-04) : Keyed shared connections
+
+		`dsConnection::shared()` can take a key and return a connection associated
+		with a key. Supplying no key uses "_default_". This solves BYT where we
+		have two connections alive at the same time.
+
+	[X] (2017-11-16) : Sort by table
+
+		I'm not 100% certain about this, but it seems like deadlocks occur in
+		mysql when locks are acquired in different orders. And locks are based on
+		which tables you are opening. So it might be wise to order our
+		inserts/updates/deletes when we are committing a struct based on the
+		table. Maybe even just sorting the updates based on alphabetical table
+		name would help? Not sure. Would also have to sort tables when fetching a
+		struct so they occur in the same order. It wouldn't be too hard to
+		implement, but I'm not sure if we would ever see a result until next
+		year's MWB deluge.
+
+		There are two places in dConnection where this comes into play. In method
+		`fetchDefs` we load up the $this->tables structure, so sort it by table
+		name. Secondly, in `confirmStruct` the same structure is updated, so sort
+		it afterwards again by table name.
+
+		In dStruct, the `commitStruct` logic runs by whatever fnames lives in the
+		insert/update/delete queues. Sort those by table name before processing.
+
+		2018-09-17 I think there are two main things to do: (1) make sure tables
+		are sorted in dConnection's $this->tables[$gname], which will then affect
+		`fetchStructForIdee` and `deleteStructWithIdee`. That table is
+		built/edited in `fetchDefs` and again in `confirmStruct`.
+
+		The other thing to do is (2) insert/update/delete fields in the proper
+		table order. I think it will be okay to mix up the order of
+		inserts/updates/deletes, it is the order of fields/tables that is more
+		important. Changing a field on an object results in only one of these
+		three actions, so I don't think we have to do, for example, all the
+		inserts first.
+
+		I've implemented #2 by merging all the ins/upd/del actions into a single
+		array of "action" items that store the field, and the table, and an
+		action. Then I can sort by table and then step through and execute
+		whatever action.
+
+		So that make me think, why don't I just do it that way from the start?
+		Instead of having three queues, let's just one queue of actions, and work
+		with that. It might be easiest if the actions array is keyed by fname.
+		This should work because a changed field only exists in one of those
+		queues at a time, so no need, really to have three of them.
